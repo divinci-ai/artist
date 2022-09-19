@@ -1,0 +1,22 @@
+* { 
+    margin:0;
+    padding:0;
+    background-color: lightblue;
+}
+
+canvas{
+    border: 2px solid black;
+}
+
+.editor_container{
+    display:flex;
+    /* justify-content: flex-start; */
+    /* align-items: flex-start; */
+}
+
+.editor_container > * {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    margin: 10px;
+}
