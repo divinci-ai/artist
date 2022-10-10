@@ -20,3 +20,7 @@ canvas{
     min-height: 0;
     margin: 10px;
 }
+
+.selected{
+    background-color: white;
+}
