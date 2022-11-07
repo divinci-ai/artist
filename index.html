@@ -3,27 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0 , maximum-scale=1.0, user-scalable=0" />
     <link rel="stylesheet" type="text/css" href="styles.css" />
     <title>Document</title>
-    <script src="opencv.js"></script>
   </head>
   <body>
-    <div class="editor_container">
-      <div>
+    <div id="editor_container">
+      <div id="toolbar">
+        <div id="crop" class="toolbar_item inactive" value="crop">crop</div>
+        <div id="move" class="toolbar_item active" value="move">move</div>
+      </div>
+      <div id="canvas">
         <canvas id="editor"></canvas>
       </div>
-      <div id="layers"></div>
-      <div>
-        <form id="prompt_form">
-          <input type="text" id="prompt" />
-          <button type="submit">submit</button>
-        </form>
-        <button id="edit_button">Edit</button>
-        <img id="image" src="daftpunk.png" />
+      <div id="sidebar">
+          <form id="prompt_form">
+            <input type="text" id="prompt" />
+            <button type="submit">submit</button>
+          </form>
+          <button id="edit_button">Edit</button>
+          <img class="prompt_result" id="image" src="daftpunk.png" />
+          <div id="layers" ></div>
       </div>
     </div>
-    <button id="save">save</button>
+    <!-- <button id="save">save</button> -->
     <script src="editor.js"></script>
     <script src="prompt.js"></script>
   </body>

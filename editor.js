@@ -1,51 +1,150 @@
+class Layer {
+  constructor(layerTitle,image){
+    this.canvas= document.createElement("canvas");
+    this.canvas.width=image.width;
+    this.canvas.height=image.height;
+    this.pos_x=0;
+    this.pos_y=0;
+    this.context = this.canvas.getContext('2d');
+    this.context.drawImage(image,0,0);
+    this.imageData = this.context.getImageData(0,0,this.canvas.width,this.canvas.height);
+    this.title=layerTitle;
+  }
+}
+
 const canvas = document.getElementById("editor");
 const context = canvas.getContext("2d");
 const save = document.getElementById("save");
 const editButton = document.getElementById("edit_button");
 const promptImg = document.getElementById("image");
+const toolbar = document.getElementById("toolbar");
+const toolbarItems = document.querySelectorAll(".toolbar_item");
 const layers = document.getElementById("layers");
+let mode = "move"; 
 
-canvas.width = 864;
-canvas.height = 864;
+canvas.width = 1125;
+canvas.height = 1275;
+let layerCount = 0; 
+let points=[];
+const layerMap = new Map();
 
-const imageMap = new Map();
 const drawCanvas = () => {
-  //   const images = getSelectedImages();
-  const images = imageMap;
+  
   context.clearRect(0, 0, canvas.width, canvas.height);
-  images.forEach((image) =>
-    context.putImageData(image.imgData, image.pos_x, image.pos_y)
+  context.globalCompositeOperation="source-over"
+  layerMap.forEach((layer) =>
+    context.putImageData(layer.imageData, layer.pos_x, layer.pos_y)
   );
 };
-const mockMap = new Map();
+
 const addImage = () => {
   const image = new Image();
   image.src = promptImg.src;
-  image.pos_x = Math.random() * 100;
-  image.pos_y = Math.random() * 100;
-  image.mat = cv.imread(image);
-  image.imgData = convertToImageData(image.mat);
-  image.imgData.height = 512;
-  image.imgData.width = 512;
-  const random_addition = String(Math.random());
-  imageMap.set(image.src + random_addition, image);
-  mockMap.set("1", image);
+  image.width=1024;
+  image.height=1024;
+  let layerTitle = `Layer ${++layerCount}`;
+  layerMap.set(layerTitle, new Layer(layerTitle ,image));
   const layer = document.createElement("div");
   const layer_img = document.createElement("img");
+  const layer_title = document.createElement("h6");
+  const layer_delete_button = document.createElement("button");
+  layer_delete_button.addEventListener('click',()=>{
+    deleteLayer(layerTitle);
+    layers.removeChild(layer);
+  })
+  layer_delete_button.innerText="delete";
+  layer_title.innerText=layerTitle;
   layer_img.src = image.src;
   layer_img.height = 64;
   layer_img.width = 64;
+  layer_img.style="display:inline;";
+  layer_title.style="display:inline;";
   layer.appendChild(layer_img);
-  layer.className = "not_selected";
-  layer.key = image.src + random_addition;
+  layer.appendChild(layer_title);
+  layer.appendChild(layer_delete_button);
+  layer.className = "inactive";
+  layer.title=layerTitle;
   layer.addEventListener("click", () => {
-    if (layer.className == "not_selected") layer.className = "selected";
-    else if (layer.className == "selected") layer.className = "not_selected";
+    if (layer.className === "active") layer.className = "inactive";
+    else if (layer.className === "inactive") layer.className = "active";
   });
   layers.appendChild(layer);
-
   drawCanvas();
 };
+
+
+const deleteLayer = (layerTitle) => {
+  layerMap.delete(layerTitle);
+  drawCanvas();
+}
+const getSelectedLayers = () => {
+  const selectedLayers = [];
+
+  [...layers.children].forEach((layer) => {
+    if (layer.className ==="active")
+      selectedLayers.push(layerMap.get(layer.title));
+  });
+  return selectedLayers;
+};
+
+const lassoCropEventHandler = (event) => {
+  if(points.length > 0 && Math.abs((event.offsetX - points[0].x)) < 5 && Math.abs((event.offsetY - points[0].y)) < 5) {
+    lassoDraw(true);
+  }
+  else {
+    points.push({x:event.offsetX,y:event.offsetY});
+    lassoDraw(false);
+  }
+}
+
+
+const lassoDraw = (dash) => {
+  context.globalCompositeOperation = "source-over";
+  context.strokeStyle='white';
+  if(dash===true)context.setLineDash([5, 5]);
+  else context.setLineDash([]);
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  drawCanvas();
+  context.beginPath(); 
+  points.forEach(point => {
+    context.lineTo(point.x,point.y);
+  });
+  if(dash===true){
+    context.closePath();
+    lassoCrop();
+  } 
+  else context.stroke();
+};
+
+const lassoCrop = () => {
+  let selectedLayers = getSelectedLayers();
+  selectedLayers.forEach(layer => {
+    layer.context.globalCompositeOperation = "destination-out";
+    layer.context.beginPath(); 
+    points.forEach(point => {
+      console.log(`x is ${point.x} and y is ${point.y}`);
+      let x = (point.x - layer.pos_x);
+      let y = (point.y - layer.pos_y);
+      console.log(`x is ${x} and y is ${y}`);
+      layer.context.lineTo(x,y);
+    });
+    layer.context.closePath();
+    layer.context.fill();
+    layer.imageData=layer.context.getImageData(0,0,layer.canvas.width,layer.canvas.height);
+  });
+  drawCanvas();  
+  points.splice(0,points.length)
+}
+
+const moveEventHandler = (event) => {
+  const layers = getSelectedLayers();
+  layers.forEach((layer) => {
+    layer.click_posx = event.offsetX - layer.pos_x;
+    layer.click_posy = event.offsetY - layer.pos_y;
+  });
+  drawCanvas();
+}
+
 const saveDrawing = () => {
   canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
   var anchor = document.createElement("a");
@@ -54,119 +153,32 @@ const saveDrawing = () => {
   anchor.click();
 };
 
-canvas.addEventListener("mousedown", function (event) {
-  const images = getSelectedImages();
-  images.forEach((image) => {
-    image.click_posx = event.offsetX - image.pos_x;
-    image.click_posy = event.offsetY - image.pos_y;
-  });
-});
 
 canvas.addEventListener("mouseup", function (event) {
-  const images = getSelectedImages();
-  images.forEach((image) => {
-    image.pos_x = event.offsetX - image.click_posx;
-    image.pos_y = event.offsetY - image.click_posy;
-  });
-  drawCanvas();
-  image.draggable = false;
+  if(mode=="move"){  const layers = getSelectedLayers();
+    layers.forEach((layer) => {
+      layer.pos_x = event.offsetX - layer.click_posx;
+      layer.pos_y = event.offsetY - layer.click_posy;
+    });
+    drawCanvas();
+    image.draggable = false;}
+
+
 });
 
-const draw = (x, y) => {
-  context.font = "50px Comic Sans MS";
-  context.fillText("Hello world", x, y);
-};
-
-const convertToImageData = (mat) => {
-  if (!(mat instanceof cv.Mat)) {
-    throw new Error("Please input the valid cv.Mat instance.");
-    return;
-  }
-  var img = new cv.Mat();
-  var depth = mat.type() % 8;
-  var scale = depth <= cv.CV_8S ? 1 : depth <= cv.CV_32S ? 1 / 256 : 255;
-  var shift = depth === cv.CV_8S || depth === cv.CV_16S ? 128 : 0;
-  mat.convertTo(img, cv.CV_8U, scale, shift);
-  switch (img.type()) {
-    case cv.CV_8UC1:
-      cv.cvtColor(img, img, cv.COLOR_GRAY2RGBA);
-      break;
-    case cv.CV_8UC3:
-      cv.cvtColor(img, img, cv.COLOR_RGB2RGBA);
-      break;
-    case cv.CV_8UC4:
-      break;
-    default:
-      throw new Error(
-        "Bad number of channels (Source image must have 1, 3 or 4 channels)"
-      );
-      return;
-  }
-  var imgData = new ImageData(
-    new Uint8ClampedArray(img.data),
-    img.cols,
-    img.rows
-  );
-  img.delete();
-  return imgData;
-};
-
-const enlargeImage = (src) => {
-  console.log(src);
-  console.log(src.rows);
-  console.log(src.cols);
-  let dst = new cv.Mat();
-  cv.resize(
-    src,
-    dst,
-    new cv.Size(0, 0),
-    2,
-    2,
-    (interpolation = cv.INTER_LINEAR)
-  );
-  //delete matrices
-  // return dst;
-  let pic = convertToImageData(dst);
-
-  // context.putImageData(pic, 0, 0);
-  cv.imshow(canvas, dst);
-};
-
-const shrinkImage = (src) => {
-  let dst = new cv.Mat();
-  cv.resize(src, dst, new cv.Size(0, 0), 0.1, 0.1, cv.INTER_AREA);
-  //delete matrices
-  cv.imshow(canvas, dst);
-};
-const getSelectedImages = () => {
-  const selectedImages = [];
-
-  [...layers.children].forEach((layer) => {
-    if (layer.className == "selected")
-      selectedImages.push(imageMap.get(layer.key));
-  });
-  console.log(selectedImages);
-  return selectedImages;
-};
-
-save.addEventListener("click", () => {
-  const reference = crypto.randomUUID(); 
-  const design = canvas.toDataURL(); 
-  const requestOptions = {
-    method: "Post",
-    body:JSON.stringify({reference:reference,design:design})
-    
-    };
-  fetch("http://127.0.0.1:8080/design/add",requestOptions);
-  window.location.href="http://localhost:3000/?ref="+reference; 
-  
+canvas.addEventListener("mousedown", (event) => {
+  if(mode=='crop')  lassoCropEventHandler(event);
+  else if(mode=='move') moveEventHandler(event);
 });
 
-// save.addEventListener("click", () => {
-//   const image = mockMap.get('1');
-//   console.log(image.imgData.width);
-//   console.log(image.imgData.height)
-//   enlargeImage(image.mat);
-// });
+// toolbar.addEventListener("click",lassoDraw);
 
 editButton.addEventListener("click", addImage);
+
+toolbarItems.forEach(item => item.addEventListener("click", () => {
+  if(item.className==='toolbar_item active') item.className='toolbar_item inactive';
+  else item.className='toolbar_item active';
+  mode=item.getAttribute("value");
+}));
+
+
