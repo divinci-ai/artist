@@ -20,8 +20,9 @@ const promptImg = document.getElementById("image");
 const toolbar = document.getElementById("toolbar");
 const toolbarItems = document.querySelectorAll(".toolbar_item");
 const layers = document.getElementById("layers");
-let mode = "move"; 
+let mode = "crop"; 
 
+context.imageSmoothingEnabled = false;
 canvas.width = 1125;
 canvas.height = 1275;
 let layerCount = 0; 
