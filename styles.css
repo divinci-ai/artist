@@ -33,7 +33,7 @@ body{
 #canvas{
     transform-origin: 0 0;
     transform: scale(1) translate(0, 0);
-    cursor: grab;
+    /* cursor: grab; */
     background-color: white;
 }
 
@@ -44,10 +44,7 @@ body{
 
 #canvas_container{
     flex-grow: 1;
-    overflow-x: scroll;
-    overflow-y: scroll;
-    scrollbar-width:thin;
-    scrollbar-color: black;
+    overflow: hidden;
 }
 /* 
 #canvas {

@@ -1,10 +1,20 @@
 class Layer {
+  constructor(layerTitle) {
+    this.title = layerTitle;
+  }
+}
+
+class ImageLayer extends Layer {
   constructor(layerTitle, image) {
+    super(layerTitle);
+    this.image = image;
     this.canvas = document.createElement("canvas");
     this.canvas.width = image.width;
     this.canvas.height = image.height;
     this.pos_x = 0;
     this.pos_y = 0;
+    this.width = image.width;
+    this.height = image.height;
     this.context = this.canvas.getContext("2d");
     this.context.drawImage(image, 0, 0);
     this.imageData = this.context.getImageData(
@@ -13,13 +23,22 @@ class Layer {
       this.canvas.width,
       this.canvas.height
     );
-    this.title = layerTitle;
+  }
+}
+class DrawableLayer extends Layer {
+  constructor(layerTitle, pos_x, pos_y, width, height, fill) {
+    super(layerTitle);
+    this.width = width;
+    this.height = height;
+    this.fill = fill;
+    this.pos_x = pos_x;
+    this.pos_y = pos_y;
   }
 }
 
 const canvas = document.getElementById("canvas");
 const context = canvas.getContext("2d");
-const save = document.getElementById("save");
+const save = document.getElementById("save_button");
 const editButton = document.getElementById("edit_button");
 const promptImg = document.getElementById("image");
 const toolbar = document.getElementById("toolbar");
@@ -27,6 +46,8 @@ const toolbarItems = document.querySelectorAll(".toolbar_item");
 const layers = document.getElementById("layers");
 const body = document.getElementById("editor_container");
 const canvasContainer = document.getElementById("canvas_container");
+const productForm = document.getElementById('create_product_form'); 
+
 let mode = "crop";
 let scale = 1;
 
@@ -41,13 +62,26 @@ let start = { x: 0, y: 0 };
 let pointX = 0;
 let pointY = 0;
 const layerMap = new Map();
+layerMap.set("design", new DrawableLayer("design", 2000, 2000, 4500, 5100));
 
 const drawCanvas = () => {
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.globalCompositeOperation = "source-over";
-  layerMap.forEach((layer) =>
-    context.putImageData(layer.imageData, layer.pos_x, layer.pos_y)
-  );
+  layerMap.forEach((layer) => {
+    if (layer instanceof ImageLayer) drawImage(layer);
+    else if (layer instanceof DrawableLayer) draw(layer);
+  });
+};
+
+const drawImage = (layer) => {
+  context.putImageData(layer.imageData, layer.pos_x, layer.pos_y);
+};
+
+const draw = (layer) => {
+  context.beginPath();
+  context.fillStyle = "grey";
+  context.fillRect(layer.pos_x, layer.pos_y, layer.width, layer.height);
+  context.stroke();
 };
 
 const addImage = () => {
@@ -56,7 +90,7 @@ const addImage = () => {
   image.width = 1024;
   image.height = 1024;
   let layerTitle = `Layer ${++layerCount}`;
-  layerMap.set(layerTitle, new Layer(layerTitle, image));
+  layerMap.set(layerTitle, new ImageLayer(layerTitle, image));
   const layer = document.createElement("div");
   const layer_img = document.createElement("img");
   const layer_title = document.createElement("h6");
@@ -171,16 +205,55 @@ const setTransform = () => {
   canvas.style.transform =
     "translate(" + pointX + "px, " + pointY + "px) scale(" + scale + ")";
 };
-const saveDrawing = () => {
-  canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
-  var anchor = document.createElement("a");
-  anchor.href = canvas.toDataURL("image/png");
-  anchor.download = "IMAGE.PNG";
-  anchor.click();
+// const saveDrawing = (c) => {
+//   // c.toDataURL("image/png").replace("image/png", "image/octet-stream");
+//   var anchor = document.createElement("a");
+//   anchor.href = c.toDataURL("image/png");
+//   anchor.download = "rageCage.PNG";
+//   anchor.click();
+// };
+// const getUploadURL = async () => {
+//   let response = {};
+//   try{
+// response = await fetch('http://localhost:8787',{
+// method:'POST',
+// mode:'no-cors'
+//   });
+//   }catch(error){
+//     console.log(error);
+//   }https://divinci.shop/api/design
+//   return response;
+// };
+const saveDrawing = (c) => {
+  c.toBlob((blob)=>{
+      // fetch('https://divinci.shop/api/design', {
+      fetch('http://localhost:8787',{
+    method: "PUT",
+    body:blob, 
+    
+  });
+  })
 };
 
+const createProduct = (event, c) => {
+  const data = new FormData(event.target);
+  //TODO: check if all inputs are correct
+  c.toBlob((blob)=>{
+    fetch('https://divinci.shop/api/product', {
+    // fetch('http://localhost:8787',{
+  method: "PUT",
+  body:blob, 
+  headers:{
+    title:data.get('title'), 
+    price:data.get('price'), 
+    description:data.get('description'), 
+  }
+});
+})
+}
+
 canvas.addEventListener("mouseup", function (event) {
-  if(!spanning){
+  if (!panning) {
     if (mode == "move") {
       const layers = getSelectedLayers();
       layers.forEach((layer) => {
@@ -191,18 +264,22 @@ canvas.addEventListener("mouseup", function (event) {
       image.draggable = false;
     }
   }
-  
 });
 
-canvas.addEventListener("mousedown", (event) => {
+canvasContainer.addEventListener("mousedown", (event) => {
   if (spaceDown) {
     setStartPoints(event);
     panning = true;
-  } else if (mode == "crop") lassoCropEventHandler(event);
+  }
+});
+
+canvas.addEventListener("mousedown", (event) => {
+  if (spaceDown) return;
+  else if (mode == "crop") lassoCropEventHandler(event);
   else if (mode == "move") moveEventHandler(event);
 });
 
-canvas.addEventListener("mousemove", function (event) {
+canvasContainer.addEventListener("mousemove", function (event) {
   if (panning) {
     pointX = event.clientX - start.x;
     pointY = event.clientY - start.y;
@@ -223,8 +300,8 @@ toolbarItems.forEach((item) =>
 
 body.addEventListener("wheel", (e) => {
   e.preventDefault();
-  let xs = (e.clientX - pointX) / scale
-  let ys = (e.clientY - pointY) / scale
+  let xs = (e.clientX - pointX) / scale;
+  let ys = (e.clientY - pointY) / scale;
   let delta = e.wheelDelta ? e.wheelDelta : -e.deltaY;
   delta > 0 ? (scale *= 1.2) : (scale /= 1.2);
   pointX = e.clientX - xs * scale;
@@ -235,20 +312,63 @@ body.addEventListener("wheel", (e) => {
 body.addEventListener("mouseup", (event) => {
   if (panning) panning = false;
 });
-document.addEventListener("keydown", function (event) {
-  event.preventDefault();
+document.addEventListener("keydown", function (event) { 
   if (event.ctrlKey) {
+    event.preventDefault();
     console.log("ctrl");
   } else if (event.key == " ") {
-    canvas.style.cursor = "grab";
+    event.preventDefault();
+    canvasContainer.style.cursor = "grab";
     spaceDown = true;
   }
 });
 
 document.addEventListener("keyup", function (event) {
-  event.preventDefault();
   if (event.key == " ") {
-    canvas.style.cursor = "auto";
+    event.preventDefault();
+    canvasContainer.style.cursor = "auto";
     spaceDown = false;
   }
 });
+
+//TODO: add artboard layer
+save.addEventListener("click", () => {
+  let design = layerMap.get("Layer 1");
+  const tempCanvas = document.createElement("canvas");
+  const tempContext = tempCanvas.getContext("2d");
+  tempCanvas.width = design.width;
+  tempCanvas.height = design.height;
+  tempContext.putImageData(
+    context.getImageData(
+      design.pos_x,
+      design.pos_y,
+      design.width,
+      design.height
+    ),
+    0,
+    0
+  );
+  saveDrawing(tempCanvas);
+});
+
+productForm.addEventListener('submit', (event) => {
+  //TODO: once submit is successful, clear form
+  event.preventDefault();
+  let design = layerMap.get("design");
+  const tempCanvas = document.createElement("canvas");
+  const tempContext = tempCanvas.getContext("2d");
+  tempCanvas.width = design.width;
+  tempCanvas.height = design.height;
+  tempContext.putImageData(
+    context.getImageData(
+      design.pos_x,
+      design.pos_y,
+      design.width,
+      design.height
+    ),
+    0,
+    0
+  );
+  createProduct(event, tempCanvas);
+  
+})
