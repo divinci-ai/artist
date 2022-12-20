@@ -1,6 +1,6 @@
 body{
     overflow: hidden;
-    background-color: lightgrey;
+    background-color: grey;
     user-select: none;
 }
 
@@ -10,6 +10,7 @@ body{
    left:0;
    height:100%;
    width:100%;
+   
 }
 
 #sidebar{
@@ -24,20 +25,13 @@ body{
     height:fit-content;
 }
 
-/* 
-#prompt {
-    width:85%;
-    height:10%;
-} */
-
 #canvas{
     transform-origin: 0 0;
     transform: scale(1) translate(0, 0);
-    /* cursor: grab; */
     background-color: white;
 }
 
-#sidebar .prompt_result{
+#sidebar .txt2img__result{
     width:100%;
     height: auto;
 }
@@ -46,11 +40,6 @@ body{
     flex-grow: 1;
     overflow: hidden;
 }
-/* 
-#canvas {
-    background-color: white;
-    
-} */
 
 #toolbar{
     flex: 0 0 2vw;
@@ -58,15 +47,18 @@ body{
     background-color:darkgray;
 }
 
-
-.active{
-    background-color: gray;
+.selected__layer{
+    background-color: grey;
 }
 
-.inactive{
-    background-color: white;
+.active{
+    background-color: grey;
 }
 
 #toolbar div:hover{
     background-color: grey;
+}
+
+#tshirt{
+    display:none;
 }

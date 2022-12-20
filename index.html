@@ -8,29 +8,32 @@
     <link rel="stylesheet" type="text/css" href="normalize.css" />
     <title>Document</title>
     <script src="editor.js" defer></script>
-    <script src="prompt.js" defer></script>
   </head>
-  <body>
+  <body onload="init()">
     <div id="editor_container">
       <div id="toolbar">
-        <div id="crop" class="toolbar_item inactive" value="crop">crop</div>
+        <div id="crop" class="toolbar_item" value="crop">crop</div>
         <div id="move" class="toolbar_item active" value="move">move</div>
       </div>
       <div id="canvas_container">
         <canvas id="canvas"></canvas>
       </div>
+      
+      
       <div id="sidebar">
-        <form id="prompt_form">
-          <input type="text" id="prompt" />
+        <form id="txt2img_form">
+          <input type="text" name="prompt" />
           <button type="submit">submit</button>
         </form>
-        <button id="edit_button">Edit</button>
+        
         <button id="save_button">save design</button>
         <button id="save_mockup_button">save mockup</button>
-        <img class="prompt_result" id="image" src="daftpunk.png" />
+        <div id="prompt_result"></div>
+        <!-- <img class="prompt_result" id="image" src="daftpunk.png" /> -->
+        <img id="tshirt" src="tshirt.png" />
         <form id="create_product_form">
           <input placeholder="title" type="text" name="title" />
-          <input placeholder="price" type="text" name="price" />
+          <input placeholder="price" type="number" name="price" />
           <input placeholder="description" type="text" name="description" />
           <button type="submit">create product</button>
         </form>

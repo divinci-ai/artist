@@ -5,16 +5,17 @@ class Layer {
 }
 
 class ImageLayer extends Layer {
-  constructor(layerTitle, image) {
+  constructor(layerTitle, image, posX = 0, posY = 0, scale = 1) {
     super(layerTitle);
     this.image = image;
     this.canvas = document.createElement("canvas");
-    this.canvas.width = image.width;
-    this.canvas.height = image.height;
-    this.pos_x = 0;
-    this.pos_y = 0;
-    this.width = image.width;
-    this.height = image.height;
+    this.width = image.naturalWidth;
+    this.height = image.naturalHeight;
+    this.canvas.width = this.width;
+    this.canvas.height = this.height;
+    this.posX = posX;
+    this.posY = posY;
+    this.scale = scale;
     this.context = this.canvas.getContext("2d");
     this.context.drawImage(image, 0, 0);
     this.imageData = this.context.getImageData(
@@ -24,33 +25,52 @@ class ImageLayer extends Layer {
       this.canvas.height
     );
   }
+  getScaledHeight() {
+    return this.height * this.scale;
+  }
+  getScaledWidth() {
+    return this.width * this.scale;
+  }
 }
+
 class DrawableLayer extends Layer {
-  constructor(layerTitle, pos_x, pos_y, width, height, fill) {
+  constructor(layerTitle, posX, posY, width, height, fill, scale = 1) {
     super(layerTitle);
     this.width = width;
     this.height = height;
     this.fill = fill;
-    this.pos_x = pos_x;
-    this.pos_y = pos_y;
+    this.posX = posX;
+    this.posY = posY;
+    this.scale = scale;
+  }
+  getScaledWidth() {
+    return this.width * this.scale;
+  }
+  getScaledHeight() {
+    return this.height * this.scale;
   }
 }
-
+const CORNER_WIDTH = 10;
 const canvas = document.getElementById("canvas");
 const context = canvas.getContext("2d");
 const save = document.getElementById("save_button");
-const editButton = document.getElementById("edit_button");
 const promptImg = document.getElementById("image");
 const toolbar = document.getElementById("toolbar");
 const toolbarItems = document.querySelectorAll(".toolbar_item");
 const layers = document.getElementById("layers");
-const body = document.getElementById("editor_container");
+const editorContainer = document.getElementById("editor_container");
 const canvasContainer = document.getElementById("canvas_container");
-const productForm = document.getElementById('create_product_form'); 
+const productForm = document.getElementById("create_product_form");
+const backgroundCanvas = document.getElementById("background_canvas");
+const txt2imgForm = document.getElementById("txt2img_form");
+const txt2imgResults = document.getElementById("prompt_result");
 
-let mode = "crop";
+let mode = "move";
 let scale = 1;
-
+let dragging = false;
+let resizing = false;
+let resizeX = 0;
+let resieY = 0;
 context.imageSmoothingEnabled = false;
 canvas.width = 10000;
 canvas.height = 10000;
@@ -62,8 +82,19 @@ let start = { x: 0, y: 0 };
 let pointX = 0;
 let pointY = 0;
 const layerMap = new Map();
-layerMap.set("design", new DrawableLayer("design", 2000, 2000, 4500, 5100));
-
+const init = () => {
+  const tshirtImage = document.createElement("img");
+  tshirtImage.src = "tshirt.png";
+  layerMap.set("tshirt", new ImageLayer("tshirt", tshirtImage));
+  //height is 952
+  const px = 1061 / 2 - 450 / 2;
+  const py = 0 + 0.2 * 1011;
+  layerMap.set(
+    "printableArea",
+    new DrawableLayer("printableArea", px, py, 450, 510)
+  );
+  drawCanvas();
+};
 const drawCanvas = () => {
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.globalCompositeOperation = "source-over";
@@ -71,27 +102,71 @@ const drawCanvas = () => {
     if (layer instanceof ImageLayer) drawImage(layer);
     else if (layer instanceof DrawableLayer) draw(layer);
   });
+  outlineSelectedLayers();
 };
 
+const outlineSelectedLayers = () => {
+  const layers = getSelectedLayers();
+  layers.forEach((layer) => {
+    context.globalCompositeOperation = "source-over";
+    context.strokeStyle = "blue";
+    context.lineWidth = 2;
+    context.setLineDash([]);
+    context.strokeRect(
+      layer.posX,
+      layer.posY,
+      layer.getScaledWidth(),
+      layer.getScaledHeight()
+    );
+    drawSelectionCorner(layer.posX, layer.posY);
+    drawSelectionCorner(layer.posX + layer.getScaledWidth(), layer.posY);
+    drawSelectionCorner(layer.posX, layer.posY + layer.getScaledHeight());
+    drawSelectionCorner(
+      layer.posX + layer.getScaledWidth(),
+      layer.posY + layer.getScaledHeight()
+    );
+  });
+};
+
+const drawSelectionCorner = (posX, posY) => {
+  context.fillStyle = "white";
+  context.strokeStyle = "blue";
+  context.fillRect(posX - (CORNER_WIDTH*1/scale)/2, posY - (CORNER_WIDTH*1/scale)/2, CORNER_WIDTH*1/scale, CORNER_WIDTH*1/scale);
+  context.strokeRect(posX - (CORNER_WIDTH*1/scale)/2, posY - (CORNER_WIDTH*1/scale)/2, CORNER_WIDTH *1/scale, CORNER_WIDTH*1/scale);
+};
 const drawImage = (layer) => {
-  context.putImageData(layer.imageData, layer.pos_x, layer.pos_y);
+  context.drawImage(
+    layer.canvas,
+    layer.posX,
+    layer.posY,
+    layer.getScaledWidth(),
+    layer.getScaledHeight()
+  );
 };
 
 const draw = (layer) => {
-  context.beginPath();
-  context.fillStyle = "grey";
-  context.fillRect(layer.pos_x, layer.pos_y, layer.width, layer.height);
-  context.stroke();
+  context.globalCompositeOperation = "source-over";
+  context.strokeStyle = "black";
+  context.setLineDash([6]);
+  context.strokeRect(
+    layer.posX,
+    layer.posY,
+    layer.getScaledWidth(),
+    layer.getScaledHeight()
+  );
 };
 
-const addImage = () => {
-  const image = new Image();
-  image.src = promptImg.src;
+const addTshirt = () => {};
+
+const addImage = (image, posX, posY) => {
   image.width = 1024;
   image.height = 1024;
   let layerTitle = `Layer ${++layerCount}`;
-  layerMap.set(layerTitle, new ImageLayer(layerTitle, image));
+  layerMap.set(layerTitle, new ImageLayer(layerTitle, image, posX, posY));
   const layer = document.createElement("div");
+  layer.classList.add("layer");
+  deselectAllLayers();
+  layer.classList.add("selected__layer");
   const layer_img = document.createElement("img");
   const layer_title = document.createElement("h6");
   const layer_delete_button = document.createElement("button");
@@ -109,27 +184,31 @@ const addImage = () => {
   layer.appendChild(layer_img);
   layer.appendChild(layer_title);
   layer.appendChild(layer_delete_button);
-  layer.className = "inactive";
   layer.title = layerTitle;
   layer.addEventListener("click", () => {
-    if (layer.className === "active") layer.className = "inactive";
-    else if (layer.className === "inactive") layer.className = "active";
+    if (layer.classList.contains("selected__layer"))
+      layer.classList.remove("selected__layer");
+    else layer.classList.add("selected__layer");
+    drawCanvas();
   });
   layers.appendChild(layer);
   drawCanvas();
 };
 
+const deselectAllLayers = () => {
+  document
+    .querySelectorAll(".selected__layer")
+    .forEach((layer) => layer.classList.remove("selected__layer"));
+};
 const deleteLayer = (layerTitle) => {
   layerMap.delete(layerTitle);
   drawCanvas();
 };
 const getSelectedLayers = () => {
   const selectedLayers = [];
-
-  [...layers.children].forEach((layer) => {
-    if (layer.className === "active")
-      selectedLayers.push(layerMap.get(layer.title));
-  });
+  document
+    .querySelectorAll(".selected__layer")
+    .forEach((layer) => selectedLayers.push(layerMap.get(layer.title)));
   return selectedLayers;
 };
 
@@ -147,12 +226,11 @@ const lassoCropEventHandler = (event) => {
 };
 
 const lassoDraw = (dash) => {
-  context.globalCompositeOperation = "source-over";
-  context.strokeStyle = "white";
+  drawCanvas();
   if (dash === true) context.setLineDash([5, 5]);
   else context.setLineDash([]);
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  drawCanvas();
+  context.globalCompositeOperation = "source-over";
+  context.strokeStyle = "white";
   context.beginPath();
   points.forEach((point) => {
     context.lineTo(point.x, point.y);
@@ -170,8 +248,8 @@ const lassoCrop = () => {
     layer.context.beginPath();
     points.forEach((point) => {
       console.log(`x is ${point.x} and y is ${point.y}`);
-      let x = point.x - layer.pos_x;
-      let y = point.y - layer.pos_y;
+      let x = point.x - layer.posX;
+      let y = point.y - layer.posY;
       console.log(`x is ${x} and y is ${y}`);
       layer.context.lineTo(x, y);
     });
@@ -189,12 +267,30 @@ const lassoCrop = () => {
 };
 
 const moveEventHandler = (event) => {
+  dragging = true;
   const layers = getSelectedLayers();
   layers.forEach((layer) => {
-    layer.click_posx = event.offsetX - layer.pos_x;
-    layer.click_posy = event.offsetY - layer.pos_y;
+    layer.click_posx = event.offsetX - layer.posX;
+    layer.click_posy = event.offsetY - layer.posY;
   });
   drawCanvas();
+};
+
+const resizeEventHandler = (event) => {
+  const dx = event.offsetX - resizeX;
+  if (dx > 0) {
+    getSelectedLayers().forEach((layer) => (layer.scale += 0.01));
+    drawCanvas();
+  } else if (dx < 0) {
+    getSelectedLayers().forEach((layer) => (layer.scale -= 0.01));
+    drawCanvas();
+  }
+};
+
+const startResize = (event) => {
+  resizing = true;
+  resizeX = event.offsetX;
+  resizeY = event.offsetY;
 };
 
 const setStartPoints = (event) => {
@@ -205,67 +301,90 @@ const setTransform = () => {
   canvas.style.transform =
     "translate(" + pointX + "px, " + pointY + "px) scale(" + scale + ")";
 };
-// const saveDrawing = (c) => {
-//   // c.toDataURL("image/png").replace("image/png", "image/octet-stream");
-//   var anchor = document.createElement("a");
-//   anchor.href = c.toDataURL("image/png");
-//   anchor.download = "rageCage.PNG";
-//   anchor.click();
-// };
-// const getUploadURL = async () => {
-//   let response = {};
-//   try{
-// response = await fetch('http://localhost:8787',{
-// method:'POST',
-// mode:'no-cors'
-//   });
-//   }catch(error){
-//     console.log(error);
-//   }https://divinci.shop/api/design
-//   return response;
-// };
+
+const downloadCanvas = (c) => {
+  c.toDataURL("image/png").replace("image/png", "image/octet-stream");
+  let anchor = document.createElement("a");
+  anchor.href = c.toDataURL("image/png");
+  anchor.download = "rageCage.PNG";
+  anchor.click();
+};
+
 const saveDrawing = (c) => {
-  c.toBlob((blob)=>{
-      // fetch('https://divinci.shop/api/design', {
-      fetch('http://localhost:8787',{
-    method: "PUT",
-    body:blob, 
-    
+  c.toBlob((blob) => {
+    // fetch('https://divinci.shop/api/design', {
+    fetch("http://localhost:8787", {
+      method: "PUT",
+      body: blob,
+    });
   });
-  })
 };
 
 const createProduct = (event, c) => {
   const data = new FormData(event.target);
   //TODO: check if all inputs are correct
-  c.toBlob((blob)=>{
-    fetch('https://divinci.shop/api/product', {
-    // fetch('http://localhost:8787',{
-  method: "PUT",
-  body:blob, 
-  headers:{
-    title:data.get('title'), 
-    price:data.get('price'), 
-    description:data.get('description'), 
-  }
-});
-})
-}
-
+  c.toBlob((blob) => {
+    fetch("https://divinci.shop/api/product", {
+      // fetch('http://localhost:8787',{
+      method: "PUT",
+      body: blob,
+      headers: {
+        title: data.get("title"),
+        price: data.get("price"),
+        description: data.get("description"),
+      },
+    });
+  });
+};
 canvas.addEventListener("mouseup", function (event) {
   if (!panning) {
-    if (mode == "move") {
-      const layers = getSelectedLayers();
-      layers.forEach((layer) => {
-        layer.pos_x = event.offsetX - layer.click_posx;
-        layer.pos_y = event.offsetY - layer.click_posy;
-      });
-      drawCanvas();
-      image.draggable = false;
-    }
+    if (dragging) dragging = false;
+    if (resizing) resizing = false;
   }
 });
 
+canvas.addEventListener("mousemove", (event) => {
+  if(spaceDown) return;
+  else if (resizing) resizeEventHandler(event);
+  else if (isPointerOverCorner(event)) canvas.style.cursor = "grab";
+  else canvas.style.cursor = "auto";
+});
+
+const isPointerOverCorner = (event) => {
+  const layers = getSelectedLayers();
+  for (const layer of layers) {
+    if (
+      (Math.abs(event.offsetX - layer.posX) < CORNER_WIDTH / 2 &&
+        Math.abs(event.offsetY - layer.posY) < CORNER_WIDTH / 2) ||
+      Math.abs(
+        event.offsetX - (layer.posX + layer.getScaledWidth()) <
+          CORNER_WIDTH / 2 &&
+          Math.abs(event.offsetY - layer.posY) < CORNER_WIDTH / 2
+      ) ||
+      (Math.abs(event.offsetX - layer.posX) < CORNER_WIDTH / 2 &&
+        Math.abs(
+          event.offsetY - (layer.posY + layer.getScaledHeight()) <
+            CORNER_WIDTH / 2
+        )) ||
+      (Math.abs(event.offsetX - (layer.posX + layer.getScaledWidth())) <
+        CORNER_WIDTH / 2 &&
+        Math.abs(event.offsetY - (layer.posY + layer.getScaledHeight())) <
+          CORNER_WIDTH / 2)
+    )
+      return true;
+    else return false;
+  }
+};
+canvas.addEventListener("drop", (event) => {
+  const image = new Image();
+  image.src = event.dataTransfer.getData("Text");
+  addImage(image, event.offsetX, event.offsetY);
+});
+
+canvas.addEventListener("dragover", (event) => {
+  event.preventDefault();
+  return false;
+});
 canvasContainer.addEventListener("mousedown", (event) => {
   if (spaceDown) {
     setStartPoints(event);
@@ -275,30 +394,40 @@ canvasContainer.addEventListener("mousedown", (event) => {
 
 canvas.addEventListener("mousedown", (event) => {
   if (spaceDown) return;
+  else if (isPointerOverCorner(event)) startResize(event);
   else if (mode == "crop") lassoCropEventHandler(event);
   else if (mode == "move") moveEventHandler(event);
 });
 
-canvasContainer.addEventListener("mousemove", function (event) {
+canvasContainer.addEventListener("mousemove", (event) => {
   if (panning) {
     pointX = event.clientX - start.x;
     pointY = event.clientY - start.y;
     setTransform();
+  } else if (mode === "move" && dragging) {
+    console.log("moving");
+    const layers = getSelectedLayers();
+    layers.forEach((layer) => {
+      layer.posX = event.offsetX - layer.click_posx;
+      layer.posY = event.offsetY - layer.click_posy;
+    });
+    drawCanvas();
   }
 });
 
-editButton.addEventListener("click", addImage);
+const ACTIVE_CLASS = "active";
 
-toolbarItems.forEach((item) =>
-  item.addEventListener("click", () => {
-    if (item.className === "toolbar_item active")
-      item.className = "toolbar_item inactive";
-    else item.className = "toolbar_item active";
-    mode = item.getAttribute("value");
-  })
-);
+const setMode = (event) => {
+  toolbarItems.forEach((item) => item.classList.remove(ACTIVE_CLASS));
+  event.target.classList.add(ACTIVE_CLASS);
+  mode = event.target.getAttribute("value");
+};
 
-body.addEventListener("wheel", (e) => {
+toolbarItems.forEach((item) => {
+  item.addEventListener("click", setMode);
+});
+
+editorContainer.addEventListener("wheel", (e) => {
   e.preventDefault();
   let xs = (e.clientX - pointX) / scale;
   let ys = (e.clientY - pointY) / scale;
@@ -309,10 +438,12 @@ body.addEventListener("wheel", (e) => {
   setTransform();
 });
 
-body.addEventListener("mouseup", (event) => {
+editorContainer.addEventListener("mouseup", (event) => {
   if (panning) panning = false;
+  else if (mode == "move" && dragging) dragging = false;
 });
-document.addEventListener("keydown", function (event) { 
+
+document.addEventListener("keydown", function (event) {
   if (event.ctrlKey) {
     event.preventDefault();
     console.log("ctrl");
@@ -321,6 +452,10 @@ document.addEventListener("keydown", function (event) {
     canvasContainer.style.cursor = "grab";
     spaceDown = true;
   }
+});
+
+txt2imgForm.addEventListener("keydown", (event) => {
+  event.stopPropagation();
 });
 
 document.addEventListener("keyup", function (event) {
@@ -339,19 +474,14 @@ save.addEventListener("click", () => {
   tempCanvas.width = design.width;
   tempCanvas.height = design.height;
   tempContext.putImageData(
-    context.getImageData(
-      design.pos_x,
-      design.pos_y,
-      design.width,
-      design.height
-    ),
+    context.getImageData(design.posX, design.posY, design.width, design.height),
     0,
     0
   );
   saveDrawing(tempCanvas);
 });
 
-productForm.addEventListener('submit', (event) => {
+productForm.addEventListener("submit", (event) => {
   //TODO: once submit is successful, clear form
   event.preventDefault();
   let design = layerMap.get("design");
@@ -360,15 +490,48 @@ productForm.addEventListener('submit', (event) => {
   tempCanvas.width = design.width;
   tempCanvas.height = design.height;
   tempContext.putImageData(
-    context.getImageData(
-      design.pos_x,
-      design.pos_y,
-      design.width,
-      design.height
-    ),
+    context.getImageData(design.posX, design.posY, design.width, design.height),
     0,
     0
   );
   createProduct(event, tempCanvas);
-  
-})
+});
+
+txt2imgForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  data = new FormData(event.target);
+  const result = document.createElement("img");
+  result.classList.add("txt2img__result");
+
+  result.addEventListener("dragstart", (event) => {
+    event.dataTransfer.setData("Text", event.target.src);
+  });
+
+  fetch(`https://ai.divinci.shop/txt2img?prompt=${data.get("prompt")}&steps=2`)
+    .then((response) => response.blob())
+    .then((blob) => URL.createObjectURL(blob))
+    .then((objectURL) => {
+      result.src = objectURL;
+    })
+    .then((foo) => {
+      txt2imgResults.appendChild(result);
+    });
+});
+
+//to enable product form to use space
+productForm.addEventListener("keydown", (event) => {
+  event.stopPropagation();
+});
+
+// const updateBackgroundCanvasSize = () => {
+//   let cs = getComputedStyle(backgroundCanvas);
+//   let width = parseInt(cs.getPropertyValue("width"), 10);
+//   let height = parseInt(cs.getPropertyValue("height"), 10);
+//   backgroundCanvas.width = width;
+//   backgroundCanvas.height = height;
+// };
+
+// window.addEventListener("resize", () => {
+//   updateBackgroundCanvasSize();
+//   drawBackground();
+// });
