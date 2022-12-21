@@ -50,6 +50,8 @@ class DrawableLayer extends Layer {
     return this.height * this.scale;
   }
 }
+let translateX = 0; 
+let translateY = 0; 
 const CORNER_WIDTH = 10;
 const canvas = document.getElementById("canvas");
 const context = canvas.getContext("2d");
@@ -113,17 +115,17 @@ const outlineSelectedLayers = () => {
     context.lineWidth = 2;
     context.setLineDash([]);
     context.strokeRect(
-      layer.posX,
-      layer.posY,
+      layer.posX + translateX,
+      layer.posY + translateY,
       layer.getScaledWidth(),
       layer.getScaledHeight()
     );
-    drawSelectionCorner(layer.posX, layer.posY);
-    drawSelectionCorner(layer.posX + layer.getScaledWidth(), layer.posY);
-    drawSelectionCorner(layer.posX, layer.posY + layer.getScaledHeight());
+    drawSelectionCorner(layer.posX + translateX, layer.posY + translateY);
+    drawSelectionCorner(layer.posX + layer.getScaledWidth() + translateX, layer.posY + translateY);
+    drawSelectionCorner(layer.posX + translateX, layer.posY + layer.getScaledHeight() + translateY);
     drawSelectionCorner(
-      layer.posX + layer.getScaledWidth(),
-      layer.posY + layer.getScaledHeight()
+      layer.posX + layer.getScaledWidth() + translateX,
+      layer.posY + layer.getScaledHeight() + translateY
     );
   });
 };
@@ -137,8 +139,8 @@ const drawSelectionCorner = (posX, posY) => {
 const drawImage = (layer) => {
   context.drawImage(
     layer.canvas,
-    layer.posX,
-    layer.posY,
+    layer.posX + translateX,
+    layer.posY + translateY,
     layer.getScaledWidth(),
     layer.getScaledHeight()
   );
@@ -149,8 +151,8 @@ const draw = (layer) => {
   context.strokeStyle = "black";
   context.setLineDash([6]);
   context.strokeRect(
-    layer.posX,
-    layer.posY,
+    layer.posX + translateX,
+    layer.posY + translateY,
     layer.getScaledWidth(),
     layer.getScaledHeight()
   );
@@ -247,10 +249,8 @@ const lassoCrop = () => {
     layer.context.globalCompositeOperation = "destination-out";
     layer.context.beginPath();
     points.forEach((point) => {
-      console.log(`x is ${point.x} and y is ${point.y}`);
       let x = point.x - layer.posX;
       let y = point.y - layer.posY;
-      console.log(`x is ${x} and y is ${y}`);
       layer.context.lineTo(x, y);
     });
     layer.context.closePath();
@@ -294,13 +294,20 @@ const startResize = (event) => {
 };
 
 const setStartPoints = (event) => {
-  start = { x: event.clientX - pointX, y: event.clientY - pointY };
+  start = { x: event.offsetX, y: event.offsetY };
 };
 
-const setTransform = () => {
+const setScale = () => {
   canvas.style.transform =
-    "translate(" + pointX + "px, " + pointY + "px) scale(" + scale + ")";
+    "scale(" + scale + ")";
+  drawCanvas();   
 };
+
+const setTranslate = (dx,dy) => {
+  translateX += dx; 
+  translateY += dy; 
+  drawCanvas(); 
+}
 
 const downloadCanvas = (c) => {
   c.toDataURL("image/png").replace("image/png", "image/octet-stream");
@@ -344,7 +351,7 @@ canvas.addEventListener("mouseup", function (event) {
 });
 
 canvas.addEventListener("mousemove", (event) => {
-  if(spaceDown) return;
+  if(spaceDown)  canvas.style.cursor = "grab";
   else if (resizing) resizeEventHandler(event);
   else if (isPointerOverCorner(event)) canvas.style.cursor = "grab";
   else canvas.style.cursor = "auto";
@@ -354,21 +361,21 @@ const isPointerOverCorner = (event) => {
   const layers = getSelectedLayers();
   for (const layer of layers) {
     if (
-      (Math.abs(event.offsetX - layer.posX) < CORNER_WIDTH / 2 &&
-        Math.abs(event.offsetY - layer.posY) < CORNER_WIDTH / 2) ||
+      (Math.abs(event.offsetX  - (layer.posX + translateX)) < CORNER_WIDTH / 2 &&
+        Math.abs(event.offsetY - (layer.posY+ translateY)) < CORNER_WIDTH / 2) ||
       Math.abs(
-        event.offsetX - (layer.posX + layer.getScaledWidth()) <
+        event.offsetX - ((layer.posX + translateX) + layer.getScaledWidth()) <
           CORNER_WIDTH / 2 &&
-          Math.abs(event.offsetY - layer.posY) < CORNER_WIDTH / 2
+          Math.abs(event.offsetY - (layer.posY+ translateY)) < CORNER_WIDTH / 2
       ) ||
-      (Math.abs(event.offsetX - layer.posX) < CORNER_WIDTH / 2 &&
+      (Math.abs(event.offsetX - (layer.posX + translateX)) < CORNER_WIDTH / 2 &&
         Math.abs(
-          event.offsetY - (layer.posY + layer.getScaledHeight()) <
+          event.offsetY - ((layer.posY+ translateY) + layer.getScaledHeight()) <
             CORNER_WIDTH / 2
         )) ||
-      (Math.abs(event.offsetX - (layer.posX + layer.getScaledWidth())) <
+      (Math.abs(event.offsetX - ((layer.posX + translateX) + layer.getScaledWidth())) <
         CORNER_WIDTH / 2 &&
-        Math.abs(event.offsetY - (layer.posY + layer.getScaledHeight())) <
+        Math.abs(event.offsetY - ((layer.posY+ translateY) + layer.getScaledHeight())) <
           CORNER_WIDTH / 2)
     )
       return true;
@@ -401,11 +408,12 @@ canvas.addEventListener("mousedown", (event) => {
 
 canvasContainer.addEventListener("mousemove", (event) => {
   if (panning) {
-    pointX = event.clientX - start.x;
-    pointY = event.clientY - start.y;
-    setTransform();
+    dx = event.offsetX - start.x;
+    dy = event.offsetY - start.y;
+    start.x = event.offsetX; 
+    start.y = event.offsetY;
+    setTranslate(dx,dy);
   } else if (mode === "move" && dragging) {
-    console.log("moving");
     const layers = getSelectedLayers();
     layers.forEach((layer) => {
       layer.posX = event.offsetX - layer.click_posx;
@@ -435,7 +443,7 @@ editorContainer.addEventListener("wheel", (e) => {
   delta > 0 ? (scale *= 1.2) : (scale /= 1.2);
   pointX = e.clientX - xs * scale;
   pointY = e.clientY - ys * scale;
-  setTransform();
+  setScale();
 });
 
 editorContainer.addEventListener("mouseup", (event) => {
