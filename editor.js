@@ -25,11 +25,11 @@ class ImageLayer extends Layer {
       this.canvas.height
     );
   }
-  getScaledHeight() {
-    return this.height * this.scale;
-  }
   getScaledWidth() {
     return this.width * this.scale;
+  }
+  getScaledHeight() {
+    return this.height * this.scale;
   }
 }
 
@@ -117,8 +117,8 @@ const outlineSelectedLayers = () => {
     context.strokeRect(
       layer.posX + translateX,
       layer.posY + translateY,
-      layer.getScaledWidth(),
-      layer.getScaledHeight()
+      layer.getScaledWidth() * scale,
+      layer.getScaledHeight() * scale
     );
     drawSelectionCorner(layer.posX + translateX, layer.posY + translateY);
     drawSelectionCorner(layer.posX + layer.getScaledWidth() + translateX, layer.posY + translateY);
@@ -139,10 +139,10 @@ const drawSelectionCorner = (posX, posY) => {
 const drawImage = (layer) => {
   context.drawImage(
     layer.canvas,
-    layer.posX + translateX,
-    layer.posY + translateY,
-    layer.getScaledWidth(),
-    layer.getScaledHeight()
+    (layer.posX + translateX)*scale,
+    (layer.posY + translateY)*scale,
+    layer.getScaledWidth() * scale,
+    layer.getScaledHeight() * scale
   );
 };
 
@@ -151,10 +151,10 @@ const draw = (layer) => {
   context.strokeStyle = "black";
   context.setLineDash([6]);
   context.strokeRect(
-    layer.posX + translateX,
-    layer.posY + translateY,
-    layer.getScaledWidth(),
-    layer.getScaledHeight()
+    (layer.posX + translateX) * scale,
+    (layer.posY + translateY) * scale,
+    layer.getScaledWidth() * scale,
+    layer.getScaledHeight() * scale
   );
 };
 
@@ -297,15 +297,9 @@ const setStartPoints = (event) => {
   start = { x: event.offsetX, y: event.offsetY };
 };
 
-const setScale = () => {
-  canvas.style.transform =
-    "scale(" + scale + ")";
-  drawCanvas();   
-};
-
 const setTranslate = (dx,dy) => {
-  translateX += dx; 
-  translateY += dy; 
+  translateX += (dx/scale); 
+  translateY += (dy/scale); 
   drawCanvas(); 
 }
 
@@ -436,14 +430,17 @@ toolbarItems.forEach((item) => {
 });
 
 editorContainer.addEventListener("wheel", (e) => {
+  
   e.preventDefault();
-  let xs = (e.clientX - pointX) / scale;
-  let ys = (e.clientY - pointY) / scale;
+  if(e.ctrlKey){
+  let xs = (e.offsetX ) * scale;
+  let ys = (e.offsetY) * scale;
   let delta = e.wheelDelta ? e.wheelDelta : -e.deltaY;
   delta > 0 ? (scale *= 1.2) : (scale /= 1.2);
-  pointX = e.clientX - xs * scale;
-  pointY = e.clientY - ys * scale;
-  setScale();
+  translateX += (xs - ((e.offsetX ) * scale));
+  translateY += (ys - ((e.offsetY) * scale));
+  drawCanvas(); 
+  }
 });
 
 editorContainer.addEventListener("mouseup", (event) => {
