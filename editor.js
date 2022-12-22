@@ -50,8 +50,8 @@ class DrawableLayer extends Layer {
     return this.height * this.scale;
   }
 }
-let translateX = 0; 
-let translateY = 0; 
+let translateX = 0;
+let translateY = 0;
 const CORNER_WIDTH = 10;
 const canvas = document.getElementById("canvas");
 const context = canvas.getContext("2d");
@@ -115,17 +115,26 @@ const outlineSelectedLayers = () => {
     context.lineWidth = 2;
     context.setLineDash([]);
     context.strokeRect(
-      layer.posX + translateX,
-      layer.posY + translateY,
+      getTransformedX(layer.posX),
+      getTransformedY(layer.posY),
       layer.getScaledWidth() * scale,
       layer.getScaledHeight() * scale
     );
-    drawSelectionCorner(layer.posX + translateX, layer.posY + translateY);
-    drawSelectionCorner(layer.posX + layer.getScaledWidth() + translateX, layer.posY + translateY);
-    drawSelectionCorner(layer.posX + translateX, layer.posY + layer.getScaledHeight() + translateY);
     drawSelectionCorner(
-      layer.posX + layer.getScaledWidth() + translateX,
-      layer.posY + layer.getScaledHeight() + translateY
+      getTransformedX(layer.posX),
+      getTransformedY(layer.posY)
+    );
+    drawSelectionCorner(
+      getTransformedX(layer.posX + layer.getScaledWidth()),
+      getTransformedY(layer.posY)
+    );
+    drawSelectionCorner(
+      getTransformedX(layer.posX),
+      getTransformedY(layer.posY + layer.getScaledHeight())
+    );
+    drawSelectionCorner(
+      getTransformedX(layer.posX + layer.getScaledWidth()),
+      getTransformedY(layer.posY + layer.getScaledHeight())
     );
   });
 };
@@ -133,14 +142,24 @@ const outlineSelectedLayers = () => {
 const drawSelectionCorner = (posX, posY) => {
   context.fillStyle = "white";
   context.strokeStyle = "blue";
-  context.fillRect(posX - (CORNER_WIDTH*1/scale)/2, posY - (CORNER_WIDTH*1/scale)/2, CORNER_WIDTH*1/scale, CORNER_WIDTH*1/scale);
-  context.strokeRect(posX - (CORNER_WIDTH*1/scale)/2, posY - (CORNER_WIDTH*1/scale)/2, CORNER_WIDTH *1/scale, CORNER_WIDTH*1/scale);
+  context.fillRect(
+    posX - (CORNER_WIDTH * 1) / scale / 2,
+    posY - (CORNER_WIDTH * 1) / scale / 2,
+    (CORNER_WIDTH * 1) / scale,
+    (CORNER_WIDTH * 1) / scale
+  );
+  context.strokeRect(
+    posX - (CORNER_WIDTH * 1) / scale / 2,
+    posY - (CORNER_WIDTH * 1) / scale / 2,
+    (CORNER_WIDTH * 1) / scale,
+    (CORNER_WIDTH * 1) / scale
+  );
 };
 const drawImage = (layer) => {
   context.drawImage(
     layer.canvas,
-    (layer.posX + translateX)*scale,
-    (layer.posY + translateY)*scale,
+    getTransformedX(layer.posX),
+    getTransformedY(layer.posY),
     layer.getScaledWidth() * scale,
     layer.getScaledHeight() * scale
   );
@@ -151,8 +170,8 @@ const draw = (layer) => {
   context.strokeStyle = "black";
   context.setLineDash([6]);
   context.strokeRect(
-    (layer.posX + translateX) * scale,
-    (layer.posY + translateY) * scale,
+    getTransformedX(layer.posX),
+    getTransformedY(layer.posY),
     layer.getScaledWidth() * scale,
     layer.getScaledHeight() * scale
   );
@@ -297,11 +316,11 @@ const setStartPoints = (event) => {
   start = { x: event.offsetX, y: event.offsetY };
 };
 
-const setTranslate = (dx,dy) => {
-  translateX += (dx/scale); 
-  translateY += (dy/scale); 
-  drawCanvas(); 
-}
+const setTranslate = (dx, dy) => {
+  translateX += dx / scale;
+  translateY += dy / scale;
+  drawCanvas();
+};
 
 const downloadCanvas = (c) => {
   c.toDataURL("image/png").replace("image/png", "image/octet-stream");
@@ -345,7 +364,7 @@ canvas.addEventListener("mouseup", function (event) {
 });
 
 canvas.addEventListener("mousemove", (event) => {
-  if(spaceDown)  canvas.style.cursor = "grab";
+  if (spaceDown) canvas.style.cursor = "grab";
   else if (resizing) resizeEventHandler(event);
   else if (isPointerOverCorner(event)) canvas.style.cursor = "grab";
   else canvas.style.cursor = "auto";
@@ -355,21 +374,28 @@ const isPointerOverCorner = (event) => {
   const layers = getSelectedLayers();
   for (const layer of layers) {
     if (
-      (Math.abs(event.offsetX  - (layer.posX + translateX)) < CORNER_WIDTH / 2 &&
-        Math.abs(event.offsetY - (layer.posY+ translateY)) < CORNER_WIDTH / 2) ||
-      Math.abs(
-        event.offsetX - ((layer.posX + translateX) + layer.getScaledWidth()) <
-          CORNER_WIDTH / 2 &&
-          Math.abs(event.offsetY - (layer.posY+ translateY)) < CORNER_WIDTH / 2
-      ) ||
-      (Math.abs(event.offsetX - (layer.posX + translateX)) < CORNER_WIDTH / 2 &&
-        Math.abs(
-          event.offsetY - ((layer.posY+ translateY) + layer.getScaledHeight()) <
-            CORNER_WIDTH / 2
-        )) ||
-      (Math.abs(event.offsetX - ((layer.posX + translateX) + layer.getScaledWidth())) <
+      (Math.abs(event.offsetX - getTransformedX(layer.posX)) <
         CORNER_WIDTH / 2 &&
-        Math.abs(event.offsetY - ((layer.posY+ translateY) + layer.getScaledHeight())) <
+        Math.abs(event.offsetY - getTransformedY(layer.posY)) <
+          CORNER_WIDTH / 2) ||
+      Math.abs(
+        event.offsetX - getTransformedX(layer.posX + layer.getScaledWidth()) <
+          CORNER_WIDTH / 2 &&
+          Math.abs(event.offsetY - getTransformedY(layer.posY)) < CORNER_WIDTH / 2
+      ) ||
+      (Math.abs(event.offsetX - getTransformedX(layer.posX)) <
+        CORNER_WIDTH / 2 &&
+        Math.abs(
+          event.offsetY - getTransformedY(layer.posY + layer.getScaledHeight())) <
+            CORNER_WIDTH / 2
+        ) ||
+      (Math.abs(
+        event.offsetX - getTransformedX(layer.posX + layer.getScaledWidth())
+      ) <
+        CORNER_WIDTH / 2 &&
+        Math.abs(
+          event.offsetY - getTransformedY(layer.posY + layer.getScaledHeight())
+        ) <
           CORNER_WIDTH / 2)
     )
       return true;
@@ -404,9 +430,9 @@ canvasContainer.addEventListener("mousemove", (event) => {
   if (panning) {
     dx = event.offsetX - start.x;
     dy = event.offsetY - start.y;
-    start.x = event.offsetX; 
+    start.x = event.offsetX;
     start.y = event.offsetY;
-    setTranslate(dx,dy);
+    setTranslate(dx, dy);
   } else if (mode === "move" && dragging) {
     const layers = getSelectedLayers();
     layers.forEach((layer) => {
@@ -430,18 +456,30 @@ toolbarItems.forEach((item) => {
 });
 
 editorContainer.addEventListener("wheel", (e) => {
-  
   e.preventDefault();
-  if(e.ctrlKey){
-  let xs = (e.offsetX ) * scale;
-  let ys = (e.offsetY) * scale;
-  let delta = e.wheelDelta ? e.wheelDelta : -e.deltaY;
-  delta > 0 ? (scale *= 1.2) : (scale /= 1.2);
-  translateX += (xs - ((e.offsetX ) * scale));
-  translateY += (ys - ((e.offsetY) * scale));
-  drawCanvas(); 
+  if (e.ctrlKey) {
+    const original = getOriginal(e.offsetX, e.offsetY);
+    let delta = e.wheelDelta ? e.wheelDelta : -e.deltaY;
+    delta > 0 ? (scale *= 1.2) : (scale /= 1.2);
+
+    translateX = e.offsetX / scale - original.x;
+    translateY = e.offsetY / scale - original.y;
+    drawCanvas();
   }
 });
+
+const getOriginal = (x, y) => {
+  const original = { x: x / scale - translateX, y: y / scale - translateY };
+  return original;
+};
+
+const getTransformedX = (x) => {
+  return (x + translateX) * scale;
+};
+
+const getTransformedY = (y) => {
+  return (y + translateY) * scale;
+};
 
 editorContainer.addEventListener("mouseup", (event) => {
   if (panning) panning = false;
