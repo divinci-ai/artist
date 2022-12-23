@@ -52,6 +52,10 @@ class DrawableLayer extends Layer {
 }
 let translateX = 0;
 let translateY = 0;
+let resizeX1 = 0;
+let resizeY1 = 0;
+let resizeX2 = 0;
+let resizeY2 = 0;
 const CORNER_WIDTH = 10;
 const canvas = document.getElementById("canvas");
 const context = canvas.getContext("2d");
@@ -66,6 +70,11 @@ const productForm = document.getElementById("create_product_form");
 const backgroundCanvas = document.getElementById("background_canvas");
 const txt2imgForm = document.getElementById("txt2img_form");
 const txt2imgResults = document.getElementById("prompt_result");
+const sidebarGenerate = document.getElementById("sidebar_generate");
+const sidebarLayers = document.getElementById("sidebar_layers");
+const sidebarProduct = document.getElementById("sidebar_product");
+const sidebarSelectionItems = document.getElementById("sidebar_selection");
+const sidebarWindows = document.getElementById("sidebar_windows");
 
 let mode = "move";
 let scale = 1;
@@ -85,6 +94,14 @@ let pointX = 0;
 let pointY = 0;
 const layerMap = new Map();
 const init = () => {
+  sidebarSelectionItems.childNodes.forEach((item) =>
+    item.addEventListener("click", (event) => {
+      hideSidebarWindows();
+      document.getElementById(
+        "sidebar_" + event.target.getAttribute("forWindow")
+      ).style.display = "block";
+    })
+  );
   const tshirtImage = document.createElement("img");
   tshirtImage.src = "tshirt.png";
   layerMap.set("tshirt", new ImageLayer("tshirt", tshirtImage));
@@ -143,16 +160,16 @@ const drawSelectionCorner = (posX, posY) => {
   context.fillStyle = "white";
   context.strokeStyle = "blue";
   context.fillRect(
-    posX - (CORNER_WIDTH * 1) / scale / 2,
-    posY - (CORNER_WIDTH * 1) / scale / 2,
-    (CORNER_WIDTH * 1) / scale,
-    (CORNER_WIDTH * 1) / scale
+    posX - CORNER_WIDTH / 2,
+    posY - CORNER_WIDTH / 2,
+    CORNER_WIDTH,
+    CORNER_WIDTH
   );
   context.strokeRect(
-    posX - (CORNER_WIDTH * 1) / scale / 2,
-    posY - (CORNER_WIDTH * 1) / scale / 2,
-    (CORNER_WIDTH * 1) / scale,
-    (CORNER_WIDTH * 1) / scale
+    posX - CORNER_WIDTH / 2,
+    posY - CORNER_WIDTH / 2,
+    CORNER_WIDTH,
+    CORNER_WIDTH
   );
 };
 const drawImage = (layer) => {
@@ -192,8 +209,7 @@ const addImage = (image, posX, posY) => {
   const layer_title = document.createElement("h6");
   const layer_delete_button = document.createElement("button");
   layer_delete_button.addEventListener("click", () => {
-    deleteLayer(layerTitle);
-    layers.removeChild(layer);
+    deleteLayer(layerTitle, layer);
   });
   layer_delete_button.innerText = "delete";
   layer_title.innerText = layerTitle;
@@ -221,8 +237,9 @@ const deselectAllLayers = () => {
     .querySelectorAll(".selected__layer")
     .forEach((layer) => layer.classList.remove("selected__layer"));
 };
-const deleteLayer = (layerTitle) => {
+const deleteLayer = (layerTitle, layer) => {
   layerMap.delete(layerTitle);
+  layers.removeChild(layer);
   drawCanvas();
 };
 const getSelectedLayers = () => {
@@ -289,27 +306,33 @@ const moveEventHandler = (event) => {
   dragging = true;
   const layers = getSelectedLayers();
   layers.forEach((layer) => {
-    layer.click_posx = event.offsetX - layer.posX;
-    layer.click_posy = event.offsetY - layer.posY;
+    layer.click_posx = getOriginalX(event.offsetX) - layer.posX;
+    layer.click_posy = getOriginalY(event.offsetY) - layer.posY;
   });
   drawCanvas();
 };
-
+let oldRatio = 0; 
 const resizeEventHandler = (event) => {
-  const dx = event.offsetX - resizeX;
-  if (dx > 0) {
-    getSelectedLayers().forEach((layer) => (layer.scale += 0.01));
-    drawCanvas();
-  } else if (dx < 0) {
-    getSelectedLayers().forEach((layer) => (layer.scale -= 0.01));
-    drawCanvas();
-  }
+  const x = getOriginalX(event.offsetX);
+  const y = getOriginalY(event.offsetY);
+  const scaleLine = ((x - resizeX1) ** 2 + (y - resizeY1) ** 2) ** 0.5;
+  const referenceLine =
+    ((resizeX2 - resizeX1) ** 2 + (resizeY2 - resizeY1) ** 2) ** 0.5;
+  const ratio = (scaleLine / referenceLine)/scale;
+  getSelectedLayers().forEach((layer) => {
+    (layer.scale += ( oldRatio != 0? ratio-oldRatio : 0));
+  })
+  oldRatio = ratio; 
+  drawCanvas();
 };
 
+const hideSidebarWindows = () => {
+  document
+    .querySelectorAll(".sidebar__window")
+    .forEach((window) => (window.style.display = "none"));
+};
 const startResize = (event) => {
   resizing = true;
-  resizeX = event.offsetX;
-  resizeY = event.offsetY;
 };
 
 const setStartPoints = (event) => {
@@ -359,47 +382,67 @@ const createProduct = (event, c) => {
 canvas.addEventListener("mouseup", function (event) {
   if (!panning) {
     if (dragging) dragging = false;
-    if (resizing) resizing = false;
+    if (resizing) {resizing = false; oldRatio =0; }
   }
 });
 
 canvas.addEventListener("mousemove", (event) => {
   if (spaceDown) canvas.style.cursor = "grab";
   else if (resizing) resizeEventHandler(event);
-  else if (isPointerOverCorner(event)) canvas.style.cursor = "grab";
-  else canvas.style.cursor = "auto";
+  else if (isPointerOverCorner(event, false)) canvas.style.cursor = "grab";
+  else canvas.style.cursor = "url(assets/cursor.png),pointer";
 });
-
-const isPointerOverCorner = (event) => {
+//TODO: change pointer icon
+const isPointerOverCorner = (event, mousedown) => {
   const layers = getSelectedLayers();
   for (const layer of layers) {
     if (
-      (Math.abs(event.offsetX - getTransformedX(layer.posX)) <
-        CORNER_WIDTH / 2 &&
-        Math.abs(event.offsetY - getTransformedY(layer.posY)) <
-          CORNER_WIDTH / 2) ||
+      Math.abs(event.offsetX - getTransformedX(layer.posX)) <
+        CORNER_WIDTH &&
+      Math.abs(event.offsetY - getTransformedY(layer.posY)) < CORNER_WIDTH
+    ) {
+      if (mousedown) {
+        resizeX2 = layer.posX;
+        resizeY2 = layer.posY;
+        resizeX1 = layer.posX + layer.getScaledWidth();
+        resizeY1 = layer.posY + layer.getScaledHeight();
+      }
+      return true;
+    } else if (
       Math.abs(
-        event.offsetX - getTransformedX(layer.posX + layer.getScaledWidth()) <
-          CORNER_WIDTH / 2 &&
-          Math.abs(event.offsetY - getTransformedY(layer.posY)) < CORNER_WIDTH / 2
-      ) ||
-      (Math.abs(event.offsetX - getTransformedX(layer.posX)) <
-        CORNER_WIDTH / 2 &&
-        Math.abs(
-          event.offsetY - getTransformedY(layer.posY + layer.getScaledHeight())) <
-            CORNER_WIDTH / 2
-        ) ||
-      (Math.abs(
         event.offsetX - getTransformedX(layer.posX + layer.getScaledWidth())
       ) <
-        CORNER_WIDTH / 2 &&
-        Math.abs(
-          event.offsetY - getTransformedY(layer.posY + layer.getScaledHeight())
-        ) <
-          CORNER_WIDTH / 2)
-    )
+        CORNER_WIDTH  &&
+      Math.abs(event.offsetY - getTransformedY(layer.posY)) < CORNER_WIDTH
+    ) {
       return true;
-    else return false;
+    } else if (
+      Math.abs(event.offsetX - getTransformedX(layer.posX)) <
+        CORNER_WIDTH &&
+      Math.abs(
+        event.offsetY - getTransformedY(layer.posY + layer.getScaledHeight())
+      ) <
+        CORNER_WIDTH 
+    ) {
+      return true;
+    } else if (
+      Math.abs(
+        event.offsetX - getTransformedX(layer.posX + layer.getScaledWidth())
+      ) <
+        CORNER_WIDTH  &&
+      Math.abs(
+        event.offsetY - getTransformedY(layer.posY + layer.getScaledHeight())
+      ) <
+        CORNER_WIDTH 
+    ) {
+      if (mousedown) {
+        resizeX1 = layer.posX;
+        resizeY1 = layer.posY;
+        resizeX2 = layer.posX + layer.getScaledWidth();
+        resizeY2 = layer.posY + layer.getScaledHeight();
+      }
+      return true;
+    } else return false;
   }
 };
 canvas.addEventListener("drop", (event) => {
@@ -421,7 +464,7 @@ canvasContainer.addEventListener("mousedown", (event) => {
 
 canvas.addEventListener("mousedown", (event) => {
   if (spaceDown) return;
-  else if (isPointerOverCorner(event)) startResize(event);
+  else if (isPointerOverCorner(event, true)) startResize(event);
   else if (mode == "crop") lassoCropEventHandler(event);
   else if (mode == "move") moveEventHandler(event);
 });
@@ -436,8 +479,8 @@ canvasContainer.addEventListener("mousemove", (event) => {
   } else if (mode === "move" && dragging) {
     const layers = getSelectedLayers();
     layers.forEach((layer) => {
-      layer.posX = event.offsetX - layer.click_posx;
-      layer.posY = event.offsetY - layer.click_posy;
+      layer.posX = getOriginalX(event.offsetX) - layer.click_posx;
+      layer.posY = getOriginalY(event.offsetY) - layer.click_posy;
     });
     drawCanvas();
   }
@@ -471,6 +514,14 @@ editorContainer.addEventListener("wheel", (e) => {
 const getOriginal = (x, y) => {
   const original = { x: x / scale - translateX, y: y / scale - translateY };
   return original;
+};
+
+const getOriginalX = (x) => {
+  return x / scale - translateX;
+};
+
+const getOriginalY = (y) => {
+  return y / scale - translateY;
 };
 
 const getTransformedX = (x) => {

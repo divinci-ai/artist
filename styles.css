@@ -2,6 +2,7 @@ body{
     overflow: hidden;
     background-color: grey;
     user-select: none;
+    cursor:url(assets/cursor.png),pointer
 }
 
 #editor_container{
@@ -14,14 +15,15 @@ body{
 }
 
 #sidebar{
-    flex: 0 0 10vw;
+    flex: 0 0 10vw; 
+    display:flex;
+    flex-direction: row;
     height:100vh;
     background-color: white;
 }
 
 
 #submit_button{
-    width:10%;
     height:fit-content;
 }
 
@@ -60,5 +62,26 @@ body{
 }
 
 #tshirt{
+    display:none;
+}
+
+#sidebar_selection{
+    flex:1; 
+}
+
+#sidebar_windows{
+    flex:1;
+}
+
+.sidebar__selection{
+    margin:10px;
+    border-bottom: solid 1px lightgrey;
+}
+
+.sidebar__selection:hover{
+    background-color:grey;
+}
+
+.sidebar__window{
     display:none;
 }

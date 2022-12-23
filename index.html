@@ -21,23 +21,37 @@
       
       
       <div id="sidebar">
-        <form id="txt2img_form">
-          <input type="text" name="prompt" />
-          <button type="submit">submit</button>
-        </form>
-        
-        <button id="save_button">save design</button>
-        <button id="save_mockup_button">save mockup</button>
-        <div id="prompt_result"></div>
-        <!-- <img class="prompt_result" id="image" src="daftpunk.png" /> -->
-        <img id="tshirt" src="tshirt.png" />
-        <form id="create_product_form">
-          <input placeholder="title" type="text" name="title" />
-          <input placeholder="price" type="number" name="price" />
-          <input placeholder="description" type="text" name="description" />
-          <button type="submit">create product</button>
-        </form>
-        <div id="layers"></div>
+       
+        <div id="sidebar_windows">
+          <div id="sidebar_generate" class="sidebar__window">
+            <form id="txt2img_form">
+              <input type="text" name="prompt" />
+              <button type="submit">submit</button>
+            </form>
+            
+            <button id="save_button">save design</button>
+            <button id="save_mockup_button">save mockup</button>
+            <div id="prompt_result"></div>
+            <!-- <img class="prompt_result" id="image" src="daftpunk.png" /> -->
+            <img id="tshirt" src="tshirt.png" />
+          </div>
+          <div id="sidebar_product" class="sidebar__window">
+            <form id="create_product_form">
+              <input placeholder="title" type="text" name="title" />
+              <input placeholder="price" type="number" name="price" />
+              <input placeholder="description" type="text" name="description" />
+              <button type="submit">create product</button>
+            </form>
+          </div>
+          <div id="sidebar_layers" class="sidebar__window">
+            <div id="layers"></div>
+          </div>
+        </div>
+        <div id="sidebar_selection">
+          <div id="select_generate" class="sidebar__selection" forWindow="generate">Generate</div>
+          <div id="select_product" class="sidebar__selection" forWindow="product">Product</div>
+          <div id="select_layers" class="sidebar__selection" forWindow="layers">Layers</div>
+        </div>
       </div>
     </div>
   </body>
