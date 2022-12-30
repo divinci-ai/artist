@@ -12,8 +12,8 @@
   <body onload="init()">
     <div id="editor_container">
       <div id="toolbar">
-        <div id="crop" class="toolbar_item" value="crop">crop</div>
-        <div id="move" class="toolbar_item active" value="move">move</div>
+        <div id="crop" class="toolbar__item" value="crop">crop</div>
+        <div id="move" class="toolbar__item active" value="move">move</div>
       </div>
       <div id="canvas_container">
         <canvas id="canvas"></canvas>
@@ -48,9 +48,11 @@
           </div>
         </div>
         <div id="sidebar_selection">
+          <div id="sidebar_selection_background">
           <div id="select_generate" class="sidebar__selection" forWindow="generate">Generate</div>
           <div id="select_product" class="sidebar__selection" forWindow="product">Product</div>
           <div id="select_layers" class="sidebar__selection" forWindow="layers">Layers</div>
+        </div>
         </div>
       </div>
     </div>

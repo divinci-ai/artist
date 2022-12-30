@@ -62,7 +62,7 @@ const context = canvas.getContext("2d");
 const save = document.getElementById("save_button");
 const promptImg = document.getElementById("image");
 const toolbar = document.getElementById("toolbar");
-const toolbarItems = document.querySelectorAll(".toolbar_item");
+const toolbarItems = document.querySelectorAll(".toolbar__item");
 const layers = document.getElementById("layers");
 const editorContainer = document.getElementById("editor_container");
 const canvasContainer = document.getElementById("canvas_container");
@@ -128,7 +128,7 @@ const outlineSelectedLayers = () => {
   const layers = getSelectedLayers();
   layers.forEach((layer) => {
     context.globalCompositeOperation = "source-over";
-    context.strokeStyle = "blue";
+    context.strokeStyle = "rgb(93.0, 186.0, 253.0)";
     context.lineWidth = 2;
     context.setLineDash([]);
     context.strokeRect(
@@ -158,7 +158,7 @@ const outlineSelectedLayers = () => {
 
 const drawSelectionCorner = (posX, posY) => {
   context.fillStyle = "white";
-  context.strokeStyle = "blue";
+  context.strokeStyle = "rgb(93.0, 186.0, 253.0)";
   context.fillRect(
     posX - CORNER_WIDTH / 2,
     posY - CORNER_WIDTH / 2,
@@ -543,8 +543,8 @@ document.addEventListener("keydown", function (event) {
     console.log("ctrl");
   } else if (event.key == " ") {
     event.preventDefault();
-    canvasContainer.style.cursor = "grab";
     spaceDown = true;
+    canvas.style.cursor = "grab";
   }
 });
 
@@ -555,7 +555,7 @@ txt2imgForm.addEventListener("keydown", (event) => {
 document.addEventListener("keyup", function (event) {
   if (event.key == " ") {
     event.preventDefault();
-    canvasContainer.style.cursor = "auto";
+    canvas.style.cursor = "auto";
     spaceDown = false;
   }
 });
@@ -601,7 +601,7 @@ txt2imgForm.addEventListener("submit", (event) => {
     event.dataTransfer.setData("Text", event.target.src);
   });
 
-  fetch(`https://ai.divinci.shop/txt2img?prompt=${data.get("prompt")}&steps=2`)
+  fetch(`https://ai.divinci.shop/txt2img?prompt=${data.get("prompt")}&steps=40`)
     .then((response) => response.blob())
     .then((blob) => URL.createObjectURL(blob))
     .then((objectURL) => {
