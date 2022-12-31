@@ -126,8 +126,8 @@ body {
 #toolbar_collapse_button{
  position:fixed; 
  right:0;
- margin:5px 15px;
- padding: 5px 7px;
+ margin:10px 15px;
+ padding: 3px 5px;
  border:2px solid white;
  border-radius: 260px;
  display: none;
