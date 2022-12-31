@@ -78,6 +78,8 @@ const sidebarSelectionItems = document.querySelectorAll(".sidebar__selection");
 const sidebarWindows = document.getElementById("sidebar_windows");
 const toolbarCollapseButton = document.getElementById("toolbar_collapse_button"); 
 
+
+
 let mode = "move";
 let scale = 1;
 let dragging = false;
