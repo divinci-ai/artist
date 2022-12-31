@@ -73,7 +73,7 @@ const txt2imgResults = document.getElementById("prompt_result");
 const sidebarGenerate = document.getElementById("sidebar_generate");
 const sidebarLayers = document.getElementById("sidebar_layers");
 const sidebarProduct = document.getElementById("sidebar_product");
-const sidebarSelectionItems = document.getElementById("sidebar_selection");
+const sidebarSelectionItems = document.querySelectorAll(".sidebar__selection");
 const sidebarWindows = document.getElementById("sidebar_windows");
 
 let mode = "move";
@@ -94,12 +94,34 @@ let pointX = 0;
 let pointY = 0;
 const layerMap = new Map();
 const init = () => {
-  sidebarSelectionItems.childNodes.forEach((item) =>
+  sidebarSelectionItems.forEach((item) =>
     item.addEventListener("click", (event) => {
-      hideSidebarWindows();
-      document.getElementById(
-        "sidebar_" + event.target.getAttribute("forWindow")
-      ).style.display = "block";
+      if (event.target.classList.contains("active__window")) {
+        hideSidebarWindows();
+        event.target.classList.remove("active__window");
+        document.getElementById(
+          "sidebar_" + event.target.getAttribute("forWindow")
+        ).style.display = "none";
+      } else {
+        hideSidebarWindows();
+      for (let i = 0; i < sidebarSelectionItems.length; i++) {
+        if (
+          sidebarSelectionItems[i].getAttribute("forWindow") ===
+          event.target.getAttribute("forWindow")
+        ) {
+          if (i - 1 >= 0)
+            sidebarSelectionItems[i - 1].style.borderBottomLeftRadius = "10px";
+          if (i + 1 < sidebarSelectionItems.length)
+            sidebarSelectionItems[i + 1].style.borderTopLeftRadius = "10px";
+        }
+      }
+    
+        event.target.classList.add("active__window");
+        event.target.style.backgroundColor = "rgb(37, 38, 39)";
+        document.getElementById(
+          "sidebar_" + event.target.getAttribute("forWindow")
+        ).classList.add("active__sidebar__window"); 
+      }
     })
   );
   const tshirtImage = document.createElement("img");
@@ -311,25 +333,31 @@ const moveEventHandler = (event) => {
   });
   drawCanvas();
 };
-let oldRatio = 0; 
+let oldRatio = 0;
 const resizeEventHandler = (event) => {
   const x = getOriginalX(event.offsetX);
   const y = getOriginalY(event.offsetY);
   const scaleLine = ((x - resizeX1) ** 2 + (y - resizeY1) ** 2) ** 0.5;
   const referenceLine =
     ((resizeX2 - resizeX1) ** 2 + (resizeY2 - resizeY1) ** 2) ** 0.5;
-  const ratio = (scaleLine / referenceLine)/scale;
+  const ratio = scaleLine / referenceLine / scale;
   getSelectedLayers().forEach((layer) => {
-    (layer.scale += ( oldRatio != 0? ratio-oldRatio : 0));
-  })
-  oldRatio = ratio; 
+    layer.scale += oldRatio != 0 ? ratio - oldRatio : 0;
+  });
+  oldRatio = ratio;
   drawCanvas();
 };
 
 const hideSidebarWindows = () => {
+  sidebarSelectionItems.forEach((item) => {
+    item.style.backgroundColor = "rgb(24, 25, 27)";
+    item.style.borderTopLeftRadius = "0px";
+    item.style.borderBottomLeftRadius = "0px";
+    item.classList.remove("active__window");
+  });
   document
     .querySelectorAll(".sidebar__window")
-    .forEach((window) => (window.style.display = "none"));
+    .forEach((window) => window.classList.remove("active__sidebar__window"));
 };
 const startResize = (event) => {
   resizing = true;
@@ -382,7 +410,10 @@ const createProduct = (event, c) => {
 canvas.addEventListener("mouseup", function (event) {
   if (!panning) {
     if (dragging) dragging = false;
-    if (resizing) {resizing = false; oldRatio =0; }
+    if (resizing) {
+      resizing = false;
+      oldRatio = 0;
+    }
   }
 });
 
@@ -397,8 +428,7 @@ const isPointerOverCorner = (event, mousedown) => {
   const layers = getSelectedLayers();
   for (const layer of layers) {
     if (
-      Math.abs(event.offsetX - getTransformedX(layer.posX)) <
-        CORNER_WIDTH &&
+      Math.abs(event.offsetX - getTransformedX(layer.posX)) < CORNER_WIDTH &&
       Math.abs(event.offsetY - getTransformedY(layer.posY)) < CORNER_WIDTH
     ) {
       if (mousedown) {
@@ -411,29 +441,24 @@ const isPointerOverCorner = (event, mousedown) => {
     } else if (
       Math.abs(
         event.offsetX - getTransformedX(layer.posX + layer.getScaledWidth())
-      ) <
-        CORNER_WIDTH  &&
+      ) < CORNER_WIDTH &&
       Math.abs(event.offsetY - getTransformedY(layer.posY)) < CORNER_WIDTH
     ) {
       return true;
     } else if (
-      Math.abs(event.offsetX - getTransformedX(layer.posX)) <
-        CORNER_WIDTH &&
+      Math.abs(event.offsetX - getTransformedX(layer.posX)) < CORNER_WIDTH &&
       Math.abs(
         event.offsetY - getTransformedY(layer.posY + layer.getScaledHeight())
-      ) <
-        CORNER_WIDTH 
+      ) < CORNER_WIDTH
     ) {
       return true;
     } else if (
       Math.abs(
         event.offsetX - getTransformedX(layer.posX + layer.getScaledWidth())
-      ) <
-        CORNER_WIDTH  &&
+      ) < CORNER_WIDTH &&
       Math.abs(
         event.offsetY - getTransformedY(layer.posY + layer.getScaledHeight())
-      ) <
-        CORNER_WIDTH 
+      ) < CORNER_WIDTH
     ) {
       if (mousedown) {
         resizeX1 = layer.posX;
