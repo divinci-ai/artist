@@ -70,11 +70,13 @@ const productForm = document.getElementById("create_product_form");
 const backgroundCanvas = document.getElementById("background_canvas");
 const txt2imgForm = document.getElementById("txt2img_form");
 const txt2imgResults = document.getElementById("prompt_result");
+const sidebar = document.getElementById("sidebar"); 
 const sidebarGenerate = document.getElementById("sidebar_generate");
 const sidebarLayers = document.getElementById("sidebar_layers");
 const sidebarProduct = document.getElementById("sidebar_product");
 const sidebarSelectionItems = document.querySelectorAll(".sidebar__selection");
 const sidebarWindows = document.getElementById("sidebar_windows");
+const toolbarCollapseButton = document.getElementById("toolbar_collapse_button"); 
 
 let mode = "move";
 let scale = 1;
@@ -97,11 +99,8 @@ const init = () => {
   sidebarSelectionItems.forEach((item) =>
     item.addEventListener("click", (event) => {
       if (event.target.classList.contains("active__window")) {
-        hideSidebarWindows();
-        event.target.classList.remove("active__window");
-        document.getElementById(
-          "sidebar_" + event.target.getAttribute("forWindow")
-        ).style.display = "none";
+        toolbarCollapseButton.style.display="block";  
+        sidebar.style.display="none";
       } else {
         hideSidebarWindows();
       for (let i = 0; i < sidebarSelectionItems.length; i++) {
@@ -642,6 +641,10 @@ productForm.addEventListener("keydown", (event) => {
   event.stopPropagation();
 });
 
+toolbarCollapseButton.addEventListener("click", (event)=> {
+  toolbarCollapseButton.style.display="none"; 
+  sidebar.style.display="flex";
+});
 // const updateBackgroundCanvasSize = () => {
 //   let cs = getComputedStyle(backgroundCanvas);
 //   let width = parseInt(cs.getPropertyValue("width"), 10);
