@@ -123,12 +123,14 @@ body {
 }
 
 #toolbar_collapse_button{
+ 
+ justify-content: center;
  position:fixed; 
  right:0;
- margin:10px 15px;
- padding: 3px 5px;
+ margin:12px 15px;
+ padding: 2px 5px  0px;
  border:2px solid white;
- border-radius: 260px;
+ border-radius: 50%;
  display: none;
 }
 
@@ -138,4 +140,5 @@ body {
 
 #toolbar_collapse_button > * {
   pointer-events: none;
+  margin:0px;  
 }
