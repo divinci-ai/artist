@@ -3,6 +3,11 @@
   margin:0px;
   font-size: 12px;
 }
+
+.toolbar__item:hover{
+  border-bottom:4px solid rgb(13, 153, 200);
+  
+}
 img{
   background-color: none;
 }
@@ -83,10 +88,6 @@ body {
 
 .active {
   background-color: rgb(13, 153, 255);
-}
-
-#toolbar div:hover {
-  background-color: grey;
 }
 
 #tshirt {
