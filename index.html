@@ -11,16 +11,21 @@
   </head>
   <body onload="init()">
     <div id="editor_container">
-      <div id="toolbar_collapse_button"><img src="assets/menu.svg" height="20px" width="20px"/></div>
+      <div id="toolbar_collapse_button"><img src="assets/menu.svg" height="25px" /></div>
       <div id="toolbar">
+        <div id="move" class="toolbar__item active" value="move">
+          <img class="icon" src="assets/move.svg" height="25px" width="25px" />
+          <p>move</p>
+        </div>  
         <div id="crop" class="toolbar__item" value="crop">
           <img src="assets/crop.svg" height="25px" width="25px" />
           <p>crop</p>
         </div>
-        <div id="move" class="toolbar__item active" value="move">
-          <img class="icon" src="assets/move.svg" height="25px" width="25px" />
-          <p>move</p>
+        <div id="board" class="toolbar__item" value="board">
+          <img class="icon" src="assets/board.svg" height="25px" width="25px" />
+          <p>board</p>
         </div>
+        
       </div>
       <div id="editor_container_flex">
         <div id="canvas_container">

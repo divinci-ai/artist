@@ -1,30 +1,37 @@
 class Layer {
-  constructor(layerTitle) {
-    this.title = layerTitle;
+  constructor(id) {
+    if (id) this.id = id;
+    else this.id = ++layerCount;
+    this.layerTitle = `Layer ${this.id}`;
   }
 }
 
 class ImageLayer extends Layer {
-  constructor(layerTitle, image, posX = 0, posY = 0, scale = 1) {
-    super(layerTitle);
+  constructor(
+    image,
+    posX = 0,
+    posY = 0,
+    scale = 1,
+    imageCanvas,
+    id
+  ) {
+    if (id) super(id);
+    else super();
     this.image = image;
     this.canvas = document.createElement("canvas");
-    this.width = image.naturalWidth;
-    this.height = image.naturalHeight;
+    
+    this.width = image.width;
+    this.height = image.height;
     this.canvas.width = this.width;
     this.canvas.height = this.height;
     this.posX = posX;
     this.posY = posY;
     this.scale = scale;
     this.context = this.canvas.getContext("2d");
-    this.context.drawImage(image, 0, 0);
-    this.imageData = this.context.getImageData(
-      0,
-      0,
-      this.canvas.width,
-      this.canvas.height
-    );
-  }
+    if (imageCanvas) this.context.drawImage(imageCanvas,0,0);
+    else this.context.drawImage(image, 0, 0);
+    }
+
   getScaledWidth() {
     return this.width * this.scale;
   }
@@ -34,8 +41,8 @@ class ImageLayer extends Layer {
 }
 
 class DrawableLayer extends Layer {
-  constructor(layerTitle, posX, posY, width, height, fill, scale = 1) {
-    super(layerTitle);
+  constructor(posX, posY, width, height, fill, scale = 1) {
+    super();
     this.width = width;
     this.height = height;
     this.fill = fill;
@@ -50,6 +57,38 @@ class DrawableLayer extends Layer {
     return this.height * this.scale;
   }
 }
+
+class Board extends DrawableLayer {
+  constructor(posX, posY, width, height, fill, scale = 1) {
+    super(posX, posY, width, height, fill, scale);
+    this.layerMap = new Map();
+    this.isCollapsed = false;
+  }
+  toggleIsCollapsed() {
+    this.isCollapsed = !this.isCollapsed;
+  }
+}
+
+class Operation {
+  constructor(layerID) {
+    this.layerID = layerID;
+  }
+}
+
+class MoveOperation extends Operation {
+  constructor(layerID) {
+    super(layerID);
+  }
+}
+
+class CropOperation extends Operation {
+  constructor(layerID, cropPoints) {
+    super(layerID);
+    this.points = cropPoints;
+  }
+}
+
+const operations = [];
 let translateX = 0;
 let translateY = 0;
 let resizeX1 = 0;
@@ -70,25 +109,27 @@ const productForm = document.getElementById("create_product_form");
 const backgroundCanvas = document.getElementById("background_canvas");
 const txt2imgForm = document.getElementById("txt2img_form");
 const txt2imgResults = document.getElementById("prompt_result");
-const sidebar = document.getElementById("sidebar"); 
+const sidebar = document.getElementById("sidebar");
 const sidebarGenerate = document.getElementById("sidebar_generate");
 const sidebarLayers = document.getElementById("sidebar_layers");
 const sidebarProduct = document.getElementById("sidebar_product");
 const sidebarSelectionItems = document.querySelectorAll(".sidebar__selection");
 const sidebarWindows = document.getElementById("sidebar_windows");
-const toolbarCollapseButton = document.getElementById("toolbar_collapse_button"); 
-
-
+const toolbarCollapseButton = document.getElementById(
+  "toolbar_collapse_button"
+);
 
 let mode = "move";
 let scale = 1;
 let dragging = false;
 let resizing = false;
+let drawing = false;
+let currentDrawingShape = null;
 let resizeX = 0;
 let resieY = 0;
 context.imageSmoothingEnabled = false;
-canvas.width = 10000;
-canvas.height = 10000;
+canvas.width = 2000;
+canvas.height = 2000;
 let layerCount = 0;
 let points = [];
 let spaceDown = false;
@@ -98,57 +139,179 @@ let pointX = 0;
 let pointY = 0;
 const layerMap = new Map();
 const init = () => {
-  sidebarSelectionItems.forEach((item) =>
-    item.addEventListener("click", (event) => {
-      if (event.target.classList.contains("active__window")) {
-        toolbarCollapseButton.style.display="block";  
-        sidebar.style.display="none";
-      } else {
-        hideSidebarWindows();
-      for (let i = 0; i < sidebarSelectionItems.length; i++) {
-        if (
-          sidebarSelectionItems[i].getAttribute("forWindow") ===
-          event.target.getAttribute("forWindow")
-        ) {
-          if (i - 1 >= 0)
-            sidebarSelectionItems[i - 1].style.borderBottomLeftRadius = "10px";
-          if (i + 1 < sidebarSelectionItems.length)
-            sidebarSelectionItems[i + 1].style.borderTopLeftRadius = "10px";
-        }
-      }
-    
-        event.target.classList.add("active__window");
-        event.target.style.backgroundColor = "rgb(37, 38, 39)";
-        document.getElementById(
-          "sidebar_" + event.target.getAttribute("forWindow")
-        ).classList.add("active__sidebar__window"); 
-      }
-    })
-  );
   const tshirtImage = document.createElement("img");
   tshirtImage.src = "tshirt.png";
-  layerMap.set("tshirt", new ImageLayer("tshirt", tshirtImage));
+
+  // layerMap.set("tshirt", new ImageLayer("tshirt", tshirtImage));
   //height is 952
-  const px = 1061 / 2 - 450 / 2;
-  const py = 0 + 0.2 * 1011;
-  layerMap.set(
-    "printableArea",
-    new DrawableLayer("printableArea", px, py, 450, 510)
-  );
+  // const px = 1061 / 2 - 450 / 2;
+  // const py = 0 + 0.2 * 1011;
+  // layerMap.set(
+  //   "printableArea",
+  //   new DrawableLayer("printableArea", px, py, 450, 510)
+  // );
   drawCanvas();
 };
 const drawCanvas = () => {
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.globalCompositeOperation = "source-over";
   layerMap.forEach((layer) => {
-    if (layer instanceof ImageLayer) drawImage(layer);
+    const layerOperations = getLayerOperations(layer);
+    if (layerOperations.length > 0)
+      layer = getOperatedCopy(layer, layerOperations);
+    if (layer instanceof Board) drawBoard(layer);
+    else if (layer instanceof ImageLayer) drawImage(layer);
     else if (layer instanceof DrawableLayer) draw(layer);
   });
   outlineSelectedLayers();
 };
 
+const getLayerOperations = (layer) => {
+  const layerOperations = [];
+  for (let operation of operations) {
+    if (operation.layerID === layer.id) layerOperations.push(operation);
+  }
+  return layerOperations;
+};
+
+const getOperatedCopy = (layer, layerOperations) => {
+  const operatedCopy = getDeepCopy(layer);
+  layerOperations.forEach((operation) => {
+    if (operation instanceof CropOperation) {
+      applyCrop(operation, operatedCopy);
+    }
+  });
+
+  return operatedCopy;
+};
+
+const getDeepCopy = (layer) => {
+  if (layer instanceof ImageLayer) {
+    return new ImageLayer(
+      layer.image,
+      layer.posX,
+      layer.posY,
+      layer.scale,
+      layer.canvas,
+      layer.id
+    );
+  }
+};
+
+const refreshLayers = (updateSelected = false) => {
+  let selectedID;
+  if (!updateSelected) {
+    selectedID = getSelectedLayersAndBoards().map((layer) => {
+      if (layer !== null) return layer.id;
+    });
+  }
+  layers.replaceChildren();
+  layerMap.forEach((layer) => {
+    if (layer instanceof Board) {
+      addLayerElement(layer);
+      if (!layer.isCollapsed)
+        layer.layerMap.forEach((l) => {
+          addLayerElement(l, true);
+        });
+    } else {
+      addLayerElement(layer);
+    }
+  });
+
+  if (updateSelected) {
+    deselectAllLayers();
+    layers.childNodes.forEach((child) => {
+      if (child.id == layerCount) {
+        if (child.classList.contains("board"))
+          child.classList.add("selected__board");
+        else child.classList.add("selected__layer");
+      }
+    });
+  } else {
+    layers.childNodes.forEach((child) => {
+      if (selectedID.includes(Number(child.id))) {
+        if (child.classList.contains("board"))
+          child.classList.add("selected__board");
+        else child.classList.add("selected__layer");
+      }
+    });
+  }
+};
+
+const addLayerElement = (layer, isChild = false) => {
+  const layerDiv = document.createElement("div");
+  let type = "";
+  if (layer instanceof Board) {
+    type = "board";
+    collapseButton = document.createElement("img");
+    collapseButton.src = layer.isCollapsed
+      ? "assets/side_arrow.svg"
+      : "assets/down_arrow.svg";
+    collapseButton.classList.add("layer__component");
+    collapseButton.classList.add("collapse__button");
+    collapseButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      layer.toggleIsCollapsed();
+      refreshLayers();
+    });
+    layerDiv.appendChild(collapseButton);
+  } else type = "layer";
+  layerDiv.classList.add(type);
+  if (isChild) layerDiv.classList.add("child__layer");
+  const layerImg = document.createElement("img");
+  layerImg.classList.add("layer__component");
+  layerImg.classList.add("layer__icon");
+  const layerTitle = document.createElement("h6");
+  const layerDeleteButton = document.createElement("img");
+  layerTitle.classList.add("layer__component");
+  layerTitle.classList.add("layer__title");
+  layerImg.classList.add("layer__component");
+  layerDeleteButton.addEventListener("click", () => {
+    deleteLayer(layer.id);
+  });
+  layerDeleteButton.src = "assets/delete.svg";
+  layerDeleteButton.classList.add("layer__delete__button");
+  layerDeleteButton.classList.add("layer__component");
+  layerTitle.innerText = layer.layerTitle;
+  if (layer instanceof ImageLayer) layerImg.src = "assets/image.svg";
+  else if (layer instanceof Board) layerImg.src = "assets/board.svg";
+  layerImg.style = "display:inline;";
+  layerTitle.style = "display:inline;";
+  layerDiv.appendChild(layerImg);
+  layerDiv.appendChild(layerTitle);
+  layerDiv.appendChild(layerDeleteButton);
+  layerDiv.title = layer.layerTitle;
+  layerDiv.id = layer.id;
+  layerDiv.addEventListener("click", () => {
+    if (!false) {
+      deselectAllLayers();
+      layerDiv.classList.add("selected__" + type);
+    } else {
+      if (layerDiv.classList.contains("selected__" + type))
+        layerDiv.classList.remove("selected__" + type);
+      else layerDiv.classList.add("selected__" + type);
+    }
+    drawCanvas();
+  });
+  layers.appendChild(layerDiv);
+};
+const drawBoard = (board) => {
+  context.fillStyle = "#FFFFFF";
+  context.fillRect(
+    getTransformedX(board.posX),
+    getTransformedY(board.posY),
+    board.getScaledWidth() * scale,
+    board.getScaledHeight() * scale
+  );
+  board.layerMap.forEach((layer) => {
+    if (layer instanceof Board) drawBoard(layer);
+    else if (layer instanceof ImageLayer) drawImage(layer);
+    else if (layer instanceof DrawableLayer) draw(layer);
+  });
+};
 const outlineSelectedLayers = () => {
-  const layers = getSelectedLayers();
+  let layers = getSelectedLayersAndBoards();
+
   layers.forEach((layer) => {
     context.globalCompositeOperation = "source-over";
     context.strokeStyle = "rgb(93.0, 186.0, 253.0)";
@@ -196,6 +359,7 @@ const drawSelectionCorner = (posX, posY) => {
   );
 };
 const drawImage = (layer) => {
+  context.globalCompositeOperation = "source-over";
   context.drawImage(
     layer.canvas,
     getTransformedX(layer.posX),
@@ -219,69 +383,108 @@ const draw = (layer) => {
 
 const addTshirt = () => {};
 
+const getSelectedBoards = () => {
+  const selectedBoards = [];
+  document.querySelectorAll(".selected__board").forEach((board) => {
+    result = getLayerById(board.id);
+    selectedBoards.push(result);
+  });
+  return selectedBoards;
+};
+
+const getBoard = (posX, posY, width, height) => {
+  for (let [title, board] of layerMap) {
+    if (board instanceof Board)
+      if (isPointWithinLayer(posX, posY, board)) return board;
+  }
+
+  return null;
+};
+
+const isPointWithinLayer = (posX, posY, layer) => {
+  if (
+    posX > layer.posX &&
+    posX < layer.posX + layer.width &&
+    posY > layer.posY &&
+    posY < layer.posY + layer.height
+  )
+    return true;
+  else return false;
+};
 const addImage = (image, posX, posY) => {
-  image.width = 1024;
-  image.height = 1024;
-  let layerTitle = `Layer ${++layerCount}`;
-  layerMap.set(layerTitle, new ImageLayer(layerTitle, image, posX, posY));
-  const layer = document.createElement("div");
-  layer.classList.add("layer");
-  deselectAllLayers();
-  layer.classList.add("selected__layer");
-  const layer_img = document.createElement("img");
-  const layer_title = document.createElement("h6");
-  const layer_delete_button = document.createElement("button");
-  layer_delete_button.addEventListener("click", () => {
-    deleteLayer(layerTitle, layer);
-  });
-  layer_delete_button.innerText = "delete";
-  layer_title.innerText = layerTitle;
-  layer_img.src = image.src;
-  layer_img.height = 64;
-  layer_img.width = 64;
-  layer_img.style = "display:inline;";
-  layer_title.style = "display:inline;";
-  layer.appendChild(layer_img);
-  layer.appendChild(layer_title);
-  layer.appendChild(layer_delete_button);
-  layer.title = layerTitle;
-  layer.addEventListener("click", () => {
-    if (layer.classList.contains("selected__layer"))
-      layer.classList.remove("selected__layer");
-    else layer.classList.add("selected__layer");
-    drawCanvas();
-  });
-  layers.appendChild(layer);
+  image.width = image.naturalWidth;
+  image.height = image.naturalHeight;
+  const board = getBoard(posX, posY, image.width, image.height);
+  let map;
+  const imageLayer = new ImageLayer(image, posX, posY);
+  if (board === null) {
+    map = layerMap;
+  } else {
+    map = board.layerMap;
+    imageLayer.board = board;
+  }
+
+  map.set(imageLayer.id, imageLayer);
   drawCanvas();
+  refreshLayers(true);
+  outlineSelectedLayers();
 };
 
 const deselectAllLayers = () => {
   document
     .querySelectorAll(".selected__layer")
     .forEach((layer) => layer.classList.remove("selected__layer"));
+  document
+    .querySelectorAll(".selected__board")
+    .forEach((layer) => layer.classList.remove("selected__board"));
 };
-const deleteLayer = (layerTitle, layer) => {
-  layerMap.delete(layerTitle);
-  layers.removeChild(layer);
+
+const getLayerById = (id) => {
+  for (let [title, layer] of layerMap) {
+    if (layer.id === Number(id)) return layer;
+    else if (layer instanceof Board) {
+      let result = layer.layerMap.get(Number(id));
+      if (result) return result;
+    }
+  }
+  return null;
+};
+const deleteLayer = (id) => {
+  if (layerMap.get(id)) layerMap.delete(id);
+  layerMap.forEach((layer) => {
+    if (layer instanceof Board)
+      if (layer.layerMap.get(id)) layer.layerMap.delete(id);
+  });
+  refreshLayers();
   drawCanvas();
 };
+
 const getSelectedLayers = () => {
   const selectedLayers = [];
-  document
-    .querySelectorAll(".selected__layer")
-    .forEach((layer) => selectedLayers.push(layerMap.get(layer.title)));
+  document.querySelectorAll(".selected__layer").forEach((layer) => {
+    result = getLayerById(layer.id);
+    selectedLayers.push(result);
+  });
+  return selectedLayers;
+};
+
+const getSelectedLayersAndBoards = () => {
+  let selectedLayers = getSelectedLayers();
+  selectedLayers = [...selectedLayers, ...getSelectedBoards()];
   return selectedLayers;
 };
 
 const lassoCropEventHandler = (event) => {
+  const originalX = getOriginalX(event.offsetX);
+  const originalY = getOriginalY(event.offsetY);
   if (
     points.length > 0 &&
-    Math.abs(event.offsetX - points[0].x) < 5 &&
-    Math.abs(event.offsetY - points[0].y) < 5
+    Math.abs(originalX - points[0].x) < 5 &&
+    Math.abs(originalY - points[0].y) < 5
   ) {
     lassoDraw(true);
   } else {
-    points.push({ x: event.offsetX, y: event.offsetY });
+    points.push({ x: originalX, y: originalY });
     lassoDraw(false);
   }
 };
@@ -294,7 +497,7 @@ const lassoDraw = (dash) => {
   context.strokeStyle = "white";
   context.beginPath();
   points.forEach((point) => {
-    context.lineTo(point.x, point.y);
+    context.lineTo(getTransformedX(point.x), getTransformedY(point.y));
   });
   if (dash === true) {
     context.closePath();
@@ -305,33 +508,86 @@ const lassoDraw = (dash) => {
 const lassoCrop = () => {
   let selectedLayers = getSelectedLayers();
   selectedLayers.forEach((layer) => {
-    layer.context.globalCompositeOperation = "destination-out";
-    layer.context.beginPath();
+    let relativePoints = [];
     points.forEach((point) => {
-      let x = point.x - layer.posX;
-      let y = point.y - layer.posY;
-      layer.context.lineTo(x, y);
+      relativePoints.push({ x: point.x - layer.posX, y: point.y - layer.posY });
     });
-    layer.context.closePath();
-    layer.context.fill();
-    layer.imageData = layer.context.getImageData(
-      0,
-      0,
-      layer.canvas.width,
-      layer.canvas.height
-    );
+    const operation = new CropOperation(layer.id, [...relativePoints]);
+    operations.push(operation);
   });
   drawCanvas();
   points.splice(0, points.length);
 };
 
+const applyCrop = (operation, layer) => {
+  let cropContext = layer.context;
+  let operationPoints = operation.points;
+  cropContext.globalCompositeOperation = "destination-out";
+  cropContext.beginPath();
+  operationPoints.forEach((point) => {
+    cropContext.lineTo(point.x, point.y);
+  });
+  cropContext.closePath();
+  cropContext.fill();
+};
+
 const moveEventHandler = (event) => {
   dragging = true;
-  const layers = getSelectedLayers();
+  let layers = getSelectedLayersAndBoards();
+
   layers.forEach((layer) => {
     layer.click_posx = getOriginalX(event.offsetX) - layer.posX;
     layer.click_posy = getOriginalY(event.offsetY) - layer.posY;
   });
+  drawCanvas();
+};
+
+const evaluateBoard = (layer) => {
+  const oldBoard = layer.board;
+  for (const [title, board] of layerMap) {
+    if (board instanceof Board) {
+      if (isPointWithinLayer(layer.posX, layer.posY, board)) {
+        if (oldBoard !== board) {
+          if (oldBoard) oldBoard.layerMap.delete(layer.id);
+          else {
+            layerMap.delete(layer.id);
+          }
+          board.layerMap.set(layer.id, layer);
+          layer.board = board;
+          refreshLayers();
+          return;
+        }
+        return;
+      }
+    }
+  }
+  
+  if (oldBoard) {
+    layerMap.set(layer.id, layer);
+    oldBoard.layerMap.delete(layer.id);
+    layer.board = undefined;
+    refreshLayers();
+  }
+};
+
+const drawBoardStartEventHandler = (event) => {
+  drawing = true;
+  const board = new Board(
+    getOriginalX(event.offsetX),
+    getOriginalY(event.offsetY),
+    0,
+    0
+  );
+  layerMap.set(board.id, board);
+  refreshLayers(true);
+};
+
+const drawBoardEventHandler = (event) => {
+  const board = getSelectedBoards()[0];
+  const width = getOriginalX(event.offsetX) - board.posX;
+  const height = getOriginalY(event.offsetY) - board.posY;
+  board.width = width;
+  board.height = height;
   drawCanvas();
 };
 let oldRatio = 0;
@@ -341,8 +597,10 @@ const resizeEventHandler = (event) => {
   const scaleLine = ((x - resizeX1) ** 2 + (y - resizeY1) ** 2) ** 0.5;
   const referenceLine =
     ((resizeX2 - resizeX1) ** 2 + (resizeY2 - resizeY1) ** 2) ** 0.5;
-  const ratio = scaleLine / referenceLine / scale;
-  getSelectedLayers().forEach((layer) => {
+  const ratio = scaleLine / referenceLine;
+  let layers = getSelectedLayersAndBoards();
+
+  layers.forEach((layer) => {
     layer.scale += oldRatio != 0 ? ratio - oldRatio : 0;
   });
   oldRatio = ratio;
@@ -408,35 +666,28 @@ const createProduct = (event, c) => {
     });
   });
 };
-canvas.addEventListener("mouseup", function (event) {
-  if (!panning) {
-    if (dragging) dragging = false;
-    if (resizing) {
-      resizing = false;
-      oldRatio = 0;
-    }
-  }
-});
 
 canvas.addEventListener("mousemove", (event) => {
   if (spaceDown) canvas.style.cursor = "grab";
   else if (resizing) resizeEventHandler(event);
   else if (isPointerOverCorner(event, false)) canvas.style.cursor = "grab";
+  else if (mode === "board" && drawing) drawBoardEventHandler(event);
   else canvas.style.cursor = "url(assets/cursor.png),pointer";
 });
 //TODO: change pointer icon
 const isPointerOverCorner = (event, mousedown) => {
-  const layers = getSelectedLayers();
+  let layers = getSelectedLayersAndBoards();
+
   for (const layer of layers) {
     if (
       Math.abs(event.offsetX - getTransformedX(layer.posX)) < CORNER_WIDTH &&
       Math.abs(event.offsetY - getTransformedY(layer.posY)) < CORNER_WIDTH
     ) {
       if (mousedown) {
-        resizeX2 = layer.posX;
-        resizeY2 = layer.posY;
-        resizeX1 = layer.posX + layer.getScaledWidth();
-        resizeY1 = layer.posY + layer.getScaledHeight();
+        resizeX2 = getOriginalX(layer.posX);
+        resizeY2 = getOriginalY(layer.posY);
+        resizeX1 = getOriginalX(layer.posX) + layer.getScaledWidth();
+        resizeY1 = getOriginalY(layer.posY) + layer.getScaledHeight();
       }
       return true;
     } else if (
@@ -462,10 +713,10 @@ const isPointerOverCorner = (event, mousedown) => {
       ) < CORNER_WIDTH
     ) {
       if (mousedown) {
-        resizeX1 = layer.posX;
-        resizeY1 = layer.posY;
-        resizeX2 = layer.posX + layer.getScaledWidth();
-        resizeY2 = layer.posY + layer.getScaledHeight();
+        resizeX1 = getOriginalX(layer.posX);
+        resizeY1 = getOriginalY(layer.posY);
+        resizeX2 = getOriginalX(layer.posX) + layer.getScaledWidth();
+        resizeY2 = getOriginalY(layer.posY) + layer.getScaledHeight();
       }
       return true;
     } else return false;
@@ -474,7 +725,7 @@ const isPointerOverCorner = (event, mousedown) => {
 canvas.addEventListener("drop", (event) => {
   const image = new Image();
   image.src = event.dataTransfer.getData("Text");
-  addImage(image, event.offsetX, event.offsetY);
+  addImage(image, getOriginalX(event.offsetX), getOriginalY(event.offsetY));
 });
 
 canvas.addEventListener("dragover", (event) => {
@@ -493,6 +744,7 @@ canvas.addEventListener("mousedown", (event) => {
   else if (isPointerOverCorner(event, true)) startResize(event);
   else if (mode == "crop") lassoCropEventHandler(event);
   else if (mode == "move") moveEventHandler(event);
+  else if (mode === "board") drawBoardStartEventHandler(event);
 });
 
 canvasContainer.addEventListener("mousemove", (event) => {
@@ -503,12 +755,16 @@ canvasContainer.addEventListener("mousemove", (event) => {
     start.y = event.offsetY;
     setTranslate(dx, dy);
   } else if (mode === "move" && dragging) {
-    const layers = getSelectedLayers();
+    let layers = getSelectedLayersAndBoards();
+
     layers.forEach((layer) => {
       layer.posX = getOriginalX(event.offsetX) - layer.click_posx;
       layer.posY = getOriginalY(event.offsetY) - layer.click_posy;
+      evaluateBoard(layer);
     });
+
     drawCanvas();
+  } else if (drawing) {
   }
 });
 
@@ -558,15 +814,20 @@ const getTransformedY = (y) => {
   return (y + translateY) * scale;
 };
 
-editorContainer.addEventListener("mouseup", (event) => {
+document.addEventListener("mouseup", (event) => {
   if (panning) panning = false;
-  else if (mode == "move" && dragging) dragging = false;
+  else if (dragging) dragging = false;
+  else if (resizing) {
+    resizing = false;
+    oldRatio = 0;
+  } else if (drawing) {
+    drawing = false;
+  }
 });
 
 document.addEventListener("keydown", function (event) {
   if (event.ctrlKey) {
     event.preventDefault();
-    console.log("ctrl");
   } else if (event.key == " ") {
     event.preventDefault();
     spaceDown = true;
@@ -627,7 +888,7 @@ txt2imgForm.addEventListener("submit", (event) => {
     event.dataTransfer.setData("Text", event.target.src);
   });
 
-  fetch(`https://ai.divinci.shop/txt2img?prompt=${data.get("prompt")}&steps=40`)
+  fetch(`https://ai.divinci.shop/txt2img?prompt=${data.get("prompt")}&steps=2`)
     .then((response) => response.blob())
     .then((blob) => URL.createObjectURL(blob))
     .then((objectURL) => {
@@ -643,10 +904,38 @@ productForm.addEventListener("keydown", (event) => {
   event.stopPropagation();
 });
 
-toolbarCollapseButton.addEventListener("click", (event)=> {
-  toolbarCollapseButton.style.display="none"; 
-  sidebar.style.display="flex";
+toolbarCollapseButton.addEventListener("click", (event) => {
+  toolbarCollapseButton.style.display = "none";
+  sidebar.style.display = "flex";
 });
+
+sidebarSelectionItems.forEach((item) =>
+  item.addEventListener("click", (event) => {
+    if (event.target.classList.contains("active__window")) {
+      toolbarCollapseButton.style.display = "block";
+      sidebar.style.display = "none";
+    } else {
+      hideSidebarWindows();
+      for (let i = 0; i < sidebarSelectionItems.length; i++) {
+        if (
+          sidebarSelectionItems[i].getAttribute("forWindow") ===
+          event.target.getAttribute("forWindow")
+        ) {
+          if (i - 1 >= 0)
+            sidebarSelectionItems[i - 1].style.borderBottomLeftRadius = "10px";
+          if (i + 1 < sidebarSelectionItems.length)
+            sidebarSelectionItems[i + 1].style.borderTopLeftRadius = "10px";
+        }
+      }
+
+      event.target.classList.add("active__window");
+      event.target.style.backgroundColor = "rgb(37, 38, 39)";
+      document
+        .getElementById("sidebar_" + event.target.getAttribute("forWindow"))
+        .classList.add("active__sidebar__window");
+    }
+  })
+);
 // const updateBackgroundCanvasSize = () => {
 //   let cs = getComputedStyle(backgroundCanvas);
 //   let width = parseInt(cs.getPropertyValue("width"), 10);
