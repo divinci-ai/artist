@@ -7,19 +7,12 @@ class Layer {
 }
 
 class ImageLayer extends Layer {
-  constructor(
-    image,
-    posX = 0,
-    posY = 0,
-    scale = 1,
-    imageCanvas,
-    id
-  ) {
+  constructor(image, posX = 0, posY = 0, scale = 1, imageCanvas, id) {
     if (id) super(id);
     else super();
     this.image = image;
     this.canvas = document.createElement("canvas");
-    
+
     this.width = image.width;
     this.height = image.height;
     this.canvas.width = this.width;
@@ -28,9 +21,9 @@ class ImageLayer extends Layer {
     this.posY = posY;
     this.scale = scale;
     this.context = this.canvas.getContext("2d");
-    if (imageCanvas) this.context.drawImage(imageCanvas,0,0);
+    if (imageCanvas) this.context.drawImage(imageCanvas, 0, 0);
     else this.context.drawImage(image, 0, 0);
-    }
+  }
 
   getScaledWidth() {
     return this.width * this.scale;
@@ -128,8 +121,8 @@ let currentDrawingShape = null;
 let resizeX = 0;
 let resieY = 0;
 context.imageSmoothingEnabled = false;
-canvas.width = 2000;
-canvas.height = 2000;
+canvas.width = 3000;
+canvas.height = 3000;
 let layerCount = 0;
 let points = [];
 let spaceDown = false;
@@ -156,15 +149,17 @@ const drawCanvas = () => {
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.globalCompositeOperation = "source-over";
   layerMap.forEach((layer) => {
-    const layerOperations = getLayerOperations(layer);
-    if (layerOperations.length > 0)
-      layer = getOperatedCopy(layer, layerOperations);
     if (layer instanceof Board) drawBoard(layer);
     else if (layer instanceof ImageLayer) drawImage(layer);
     else if (layer instanceof DrawableLayer) draw(layer);
   });
   outlineSelectedLayers();
 };
+
+const undo = () => {
+  operations.pop(); 
+  drawCanvas();
+}
 
 const getLayerOperations = (layer) => {
   const layerOperations = [];
@@ -360,6 +355,9 @@ const drawSelectionCorner = (posX, posY) => {
 };
 const drawImage = (layer) => {
   context.globalCompositeOperation = "source-over";
+  const layerOperations = getLayerOperations(layer);
+  if (layerOperations.length > 0)
+    layer = getOperatedCopy(layer, layerOperations);
   context.drawImage(
     layer.canvas,
     getTransformedX(layer.posX),
@@ -561,7 +559,7 @@ const evaluateBoard = (layer) => {
       }
     }
   }
-  
+
   if (oldBoard) {
     layerMap.set(layer.id, layer);
     oldBoard.layerMap.delete(layer.id);
@@ -827,7 +825,9 @@ document.addEventListener("mouseup", (event) => {
 
 document.addEventListener("keydown", function (event) {
   if (event.ctrlKey) {
-    event.preventDefault();
+    if(event.key=="z" || event.key=="Z"){
+      undo();
+    }
   } else if (event.key == " ") {
     event.preventDefault();
     spaceDown = true;
