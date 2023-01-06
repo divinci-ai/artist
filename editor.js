@@ -1013,7 +1013,7 @@ txt2imgForm.addEventListener("submit", (event) => {
     event.dataTransfer.setData("Text", event.target.src);
   });
 
-  fetch(`https://ai.divinci.shop/txt2img?prompt=${data.get("prompt")}&steps=2`)
+  fetch(`https://ai.divinci.shop/txt2img?prompt=${data.get("prompt")}&steps=30`)
     .then((response) => response.blob())
     .then((blob) => URL.createObjectURL(blob))
     .then((objectURL) => {
