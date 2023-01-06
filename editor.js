@@ -787,11 +787,12 @@ const createProduct = (event, c) => {
 };
 
 canvas.addEventListener("mousemove", (event) => {
-  if (spaceDown) canvas.style.cursor = "grab";
-  else if (resizing) resizeEventHandler(event);
+  if (resizing) resizeEventHandler(event);
   else if (isPointerOverCorner(event, false)) canvas.style.cursor = "grab";
   else if (mode === "board" && drawing) drawBoardEventHandler(event);
+  else if (spaceDown) canvas.style.cursor = "grab";
   else canvas.style.cursor = "url(assets/cursor.png),pointer";
+  
 });
 //TODO: change pointer icon
 const isPointerOverCorner = (event, mousedown) => {
@@ -912,6 +913,9 @@ editorContainer.addEventListener("wheel", (e) => {
   }
 });
 
+sidebar.addEventListener("wheel", (event) => {
+  event.stopPropagation();
+})
 const getOriginal = (x, y) => {
   const original = { x: x / scale - translateX, y: y / scale - translateY };
   return original;

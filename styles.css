@@ -20,7 +20,7 @@ img {
   background-color: none;
 }
 body {
-  overflow: hidden;
+  overflow:hidden;
   background-color: grey;
   user-select: none;
   cursor: url(assets/cursor.png), pointer;
@@ -50,7 +50,17 @@ body {
 .active__sidebar__window {
   background-color: rgb(37, 38, 39);
   display: block !important;
-  height: 100vh;
+  height: 95vh;
+  overflow: scroll;
+}
+.active__sidebar__window::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.active__sidebar__window{
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
 #submit_button {
@@ -233,6 +243,6 @@ body {
 }
 @media only screen and (max-width: 1024px) {
   body {
-    padding-bottom: 60px;
+    padding-bottom: 100px;
   }
 }
