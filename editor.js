@@ -12,7 +12,6 @@ class ImageLayer extends Layer {
     else super();
     this.image = image;
     this.canvas = document.createElement("canvas");
-
     this.width = image.width;
     this.height = image.height;
     this.canvas.width = this.width;
@@ -157,9 +156,9 @@ const drawCanvas = () => {
 };
 
 const undo = () => {
-  operations.pop(); 
+  operations.pop();
   drawCanvas();
-}
+};
 
 const getLayerOperations = (layer) => {
   const layerOperations = [];
@@ -235,10 +234,12 @@ const refreshLayers = (updateSelected = false) => {
 
 const addLayerElement = (layer, isChild = false) => {
   const layerDiv = document.createElement("div");
+  const layerWrapper = document.createElement("div");
+  layerWrapper.classList.add("layer__wrapper");
   let type = "";
   if (layer instanceof Board) {
     type = "board";
-    collapseButton = document.createElement("img");
+    const collapseButton = document.createElement("img");
     collapseButton.src = layer.isCollapsed
       ? "assets/side_arrow.svg"
       : "assets/down_arrow.svg";
@@ -249,7 +250,7 @@ const addLayerElement = (layer, isChild = false) => {
       layer.toggleIsCollapsed();
       refreshLayers();
     });
-    layerDiv.appendChild(collapseButton);
+    layerWrapper.appendChild(collapseButton);
   } else type = "layer";
   layerDiv.classList.add(type);
   if (isChild) layerDiv.classList.add("child__layer");
@@ -258,6 +259,7 @@ const addLayerElement = (layer, isChild = false) => {
   layerImg.classList.add("layer__icon");
   const layerTitle = document.createElement("h6");
   const layerDeleteButton = document.createElement("img");
+
   layerTitle.classList.add("layer__component");
   layerTitle.classList.add("layer__title");
   layerImg.classList.add("layer__component");
@@ -268,13 +270,34 @@ const addLayerElement = (layer, isChild = false) => {
   layerDeleteButton.classList.add("layer__delete__button");
   layerDeleteButton.classList.add("layer__component");
   layerTitle.innerText = layer.layerTitle;
+  const transformImageButton = document.createElement("img");
+  transformImageButton.src = "assets/more.svg";
+  transformImageButton.classList.add("layer__component");
+  transformImageButton.classList.add("transform__image__button");
+  transformImageButton.addEventListener("click", () => {
+    event.stopPropagation();
+    if (layer.transform) {
+      layer.transform = false;
+    } else {
+      layer.isCollapsed = true;
+      layer.transform = true;
+    }
+    refreshLayers();
+  });
   if (layer instanceof ImageLayer) layerImg.src = "assets/image.svg";
   else if (layer instanceof Board) layerImg.src = "assets/board.svg";
   layerImg.style = "display:inline;";
   layerTitle.style = "display:inline;";
-  layerDiv.appendChild(layerImg);
-  layerDiv.appendChild(layerTitle);
-  layerDiv.appendChild(layerDeleteButton);
+  layerWrapper.appendChild(layerImg);
+  layerWrapper.appendChild(layerTitle);
+  layerWrapper.appendChild(transformImageButton);
+  layerWrapper.appendChild(layerDeleteButton);
+  layerDiv.appendChild(layerWrapper);
+  if (layer.transform) {
+    const transformForm = getTransformForm();
+    transformForm.setAttribute("layerID", layer.id);
+    layerDiv.appendChild(transformForm);
+  }
   layerDiv.title = layer.layerTitle;
   layerDiv.id = layer.id;
   layerDiv.addEventListener("click", () => {
@@ -289,6 +312,100 @@ const addLayerElement = (layer, isChild = false) => {
     drawCanvas();
   });
   layers.appendChild(layerDiv);
+};
+
+const getTransformForm = () => {
+  const transformForm = document.createElement("form");
+  const promptInput = document.createElement("input");
+  const negativePromptInput = document.createElement("input");
+  const stepsInput = document.createElement("input");
+  const submitButton = document.createElement("button");
+  transformForm.addEventListener("keydown", (event) => {
+    event.stopPropagation();
+  });
+  stepsInput.type = "number";
+  stepsInput.name = "steps";
+
+  promptInput.placeholder = "prompt";
+  promptInput.name = "prompt";
+
+  negativePromptInput.placeholder = "negative prompt";
+  negativePromptInput.name = "negativePrompt";
+
+  stepsInput.placeholder = "steps";
+  stepsInput.defaultValue = 20;
+  submitButton.innerText = "Transform";
+  submitButton.type = "submit";
+
+  transformForm.appendChild(promptInput);
+  transformForm.appendChild(negativePromptInput);
+  transformForm.appendChild(stepsInput);
+  transformForm.appendChild(submitButton);
+  transformForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    transformImage(event);
+    event.stopPropagation();
+  });
+  transformForm.classList.add("transform__form");
+  submitButton.classList.add("transform__button");
+  return transformForm;
+};
+
+const transformImage = (event) => {
+  const data = new FormData(event.target);
+  const layer = getLayerById(event.target.getAttribute("layerID"));
+  let c;
+  if (layer instanceof Board) {
+    c = document.createElement("canvas");
+    c.width = layer.width;
+    c.height = layer.height;
+    const ctxt = c.getContext("2d");
+    layer.layerMap.forEach((l) => {
+      ctxt.drawImage(l.canvas, l.posX - layer.posX, l.posY - layer.posY);
+    });
+  } else {
+    c = layer.canvas;
+  }
+  
+  c.toBlob((blob) => {
+    fetch(
+      `https://ai.divinci.shop/img2img?prompt=${data.get(
+        "prompt"
+      )}&steps=${data.get("steps")}&negativePrompt=${data.get(
+        "negativePrompt"
+      )}`,
+      {
+        method: "PUT",
+        body: blob,
+      }
+    )
+      .then((response) => response.blob())
+      .then((blob) => URL.createObjectURL(blob))
+      .then((objectURL) => {
+        const result = new Image(); 
+        result.src = objectURL; 
+        return result;
+      } 
+      )
+      .then((result) => {
+        result.onload  = () => {
+          result.width = 512;
+          result.height = 512;
+          addImage(result, layer.posX, layer.posY);
+        }
+   
+      });
+  });
+
+  // fetch(`https://ai.divinci.shop/txt2img?prompt=${data.get("prompt")}&steps=${data.get('steps')}&negativePrompt=${data.get('negativePrompt')}`)
+  //   .then((response) => response.blob())
+  //   .then((blob) => URL.createObjectURL(blob))
+  //   .then((objectURL) => {
+  //     result.src = objectURL;
+  //   })
+  //   .then((foo) => {
+  //     txt2imgResults.appendChild(result);
+  //   });
 };
 const drawBoard = (board) => {
   context.fillStyle = "#FFFFFF";
@@ -410,8 +527,11 @@ const isPointWithinLayer = (posX, posY, layer) => {
   else return false;
 };
 const addImage = (image, posX, posY) => {
-  image.width = image.naturalWidth;
-  image.height = image.naturalHeight;
+  if (image.naturalWidth && image.naturalHeight) {
+    image.width = image.naturalWidth;
+    image.height = image.naturalHeight;
+  }
+
   const board = getBoard(posX, posY, image.width, image.height);
   let map;
   const imageLayer = new ImageLayer(image, posX, posY);
@@ -551,6 +671,7 @@ const evaluateBoard = (layer) => {
             layerMap.delete(layer.id);
           }
           board.layerMap.set(layer.id, layer);
+          board.isCollapsed = false;
           layer.board = board;
           refreshLayers();
           return;
@@ -825,7 +946,7 @@ document.addEventListener("mouseup", (event) => {
 
 document.addEventListener("keydown", function (event) {
   if (event.ctrlKey) {
-    if(event.key=="z" || event.key=="Z"){
+    if (event.key == "z" || event.key == "Z") {
       undo();
     }
   } else if (event.key == " ") {
