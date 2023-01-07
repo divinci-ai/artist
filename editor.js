@@ -74,9 +74,10 @@ class MoveOperation extends Operation {
 }
 
 class CropOperation extends Operation {
-  constructor(layerID, cropPoints) {
+  constructor(layerID, cropPoints, scale) {
     super(layerID);
     this.points = cropPoints;
+    this.scale = scale; 
   }
 }
 const pointerCache = []; 
@@ -627,7 +628,7 @@ const lassoCrop = () => {
     points.forEach((point) => {
       relativePoints.push({ x: point.x - layer.posX, y: point.y - layer.posY });
     });
-    const operation = new CropOperation(layer.id, [...relativePoints]);
+    const operation = new CropOperation(layer.id, [...relativePoints], layer.scale);
     operations.push(operation);
   });
   drawCanvas();
@@ -640,7 +641,7 @@ const applyCrop = (operation, layer) => {
   cropContext.globalCompositeOperation = "destination-out";
   cropContext.beginPath();
   operationPoints.forEach((point) => {
-    cropContext.lineTo(point.x, point.y);
+    cropContext.lineTo(point.x/operation.scale, point.y/operation.scale);
   });
   cropContext.closePath();
   cropContext.fill();
