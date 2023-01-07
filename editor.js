@@ -1102,8 +1102,11 @@ const pointerMoveHandler = (event) => {
   pointerCache[index] = event; 
 
   if(pointerCache.length == 2){
+    const midPointX = (pointerCache[0].offsetX+pointerCache[1].offsetX)/2; 
+    const midPointY = ((pointerCache[0].offsetY+pointerCache[1].offsetY)/2);
     curDist = ((pointerCache[1].offsetX - pointerCache[0].offsetX)**2 + (pointerCache[1].offsetY - pointerCache[0].offsetY)**2)**0.5  ;
-    const original = getOriginal(pointerCache[0].offsetX, pointerCache[0].offsetY);
+    // const original = getOriginal(pointerCache[0].offsetX, pointerCache[0].offsetY);
+    const original = getOriginal(midPointX,midPointY);
 
     if(curDist > prevDist){
       scale *= 1.02; 
@@ -1111,8 +1114,11 @@ const pointerMoveHandler = (event) => {
       scale /= 1.02; 
       
     }
-    translateX = pointerCache[0].offsetX / scale - original.x;
-    translateY = pointerCache[0].offsetY / scale - original.y;
+    // if(prevDist=0) prevDist=curDist;  
+
+    // scale *= Math.abs(curDist - prevDist)/curDist;   
+    translateX = ((pointerCache[0].offsetX+pointerCache[1].offsetX)/2) / scale - original.x;
+    translateY = ((pointerCache[0].offsetY+pointerCache[1].offsetY)/2) / scale - original.y;
     prevDist = curDist; 
     drawCanvas();
   }
