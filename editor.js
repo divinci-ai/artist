@@ -787,7 +787,10 @@ const createProduct = (event, c) => {
 };
 
 canvas.addEventListener("pointermove", (event) => {
-  if (resizing) resizeEventHandler(event);
+  if(pointerCache.length==2){
+    return;
+  }
+  else if (resizing) resizeEventHandler(event);
   else if (isPointerOverCorner(event, false)) canvas.style.cursor = "grab";
   else if (mode === "board" && drawing) drawBoardEventHandler(event);
   else if (spaceDown) canvas.style.cursor = "grab";
@@ -860,7 +863,8 @@ canvasContainer.addEventListener("pointerdown", (event) => {
 });
 
 canvas.addEventListener("pointerdown", (event) => {
-  if (spaceDown) return;
+  if(pointerCache.length==2) return;
+  else if (spaceDown) return;
   else if (isPointerOverCorner(event, true)) startResize(event);
   else if (mode == "crop") lassoCropEventHandler(event);
   else if (mode == "move") moveEventHandler(event);
@@ -868,7 +872,8 @@ canvas.addEventListener("pointerdown", (event) => {
 });
 
 canvasContainer.addEventListener("pointermove", (event) => {
-  if (panning) {
+  if(pointerCache.length==2) return;
+  else if (panning) {
     dx = event.offsetX - start.x;
     dy = event.offsetY - start.y;
     start.x = event.offsetX;
@@ -889,8 +894,12 @@ canvasContainer.addEventListener("pointermove", (event) => {
 });
 
 const ACTIVE_CLASS = "active";
-
+const clearCrop = () => {
+  points.splice(0, points.length);
+  drawCanvas(); 
+}
 const setMode = (event) => {
+  if(mode==="crop") clearCrop(); 
   toolbarItems.forEach((item) => item.classList.remove(ACTIVE_CLASS));
   event.target.classList.add(ACTIVE_CLASS);
   mode = event.target.getAttribute("value");
@@ -1002,7 +1011,7 @@ productForm.addEventListener("submit", (event) => {
   );
   createProduct(event, tempCanvas);
 });
-
+const dragPointer = [];
 txt2imgForm.addEventListener("submit", (event) => {
   event.preventDefault();
   data = new FormData(event.target);
@@ -1012,6 +1021,15 @@ txt2imgForm.addEventListener("submit", (event) => {
   result.addEventListener("dragstart", (event) => {
     event.dataTransfer.setData("Text", event.target.src);
   });
+
+  result.addEventListener("touchend", (event)=> {
+    const rect = canvasContainer.getBoundingClientRect();
+    const touchX = event.changedTouches[0].clientX;
+    const touchY = event.changedTouches[0].clientY; 
+    if(touchX > rect.left && touchY > rect.top && touchX < rect.right && touchY <  rect.bottom  ){
+      addImage(result, touchX - rect.left, touchY - rect.top);  
+    }
+  })
 
   fetch(`https://ai.divinci.shop/txt2img?prompt=${data.get("prompt")}&steps=30`)
     .then((response) => response.blob())
@@ -1084,24 +1102,26 @@ const pointerMoveHandler = (event) => {
   pointerCache[index] = event; 
 
   if(pointerCache.length == 2){
-     curDist = Math.abs(pointerCache[0].offsetX - pointerCache[1].offsetX)  ;
-     console.log(curDist) 
+    curDist = ((pointerCache[1].offsetX - pointerCache[0].offsetX)**2 + (pointerCache[1].offsetY - pointerCache[0].offsetY)**2)**0.5  ;
+    const original = getOriginal(pointerCache[0].offsetX, pointerCache[0].offsetY);
+
     if(curDist > prevDist){
       scale *= 1.02; 
-      drawCanvas();
     }else {
       scale /= 1.02; 
-      drawCanvas(); 
+      
     }
-     
+    translateX = pointerCache[0].offsetX / scale - original.x;
+    translateY = pointerCache[0].offsetY / scale - original.y;
     prevDist = curDist; 
+    drawCanvas();
   }
 }
 
 const pointerUpHandler = (event) => {
   const index = pointerCache.findIndex(pointer => pointer.pointerId === event.pointerId); 
   pointerCache.splice(index,1); 
-  console.log(`removed index ${index} and pointer`)
+  
 }
 editorContainer.addEventListener("touchstart", (event) =>{
   if(event.touches.length > 1){
@@ -1115,6 +1135,6 @@ editorContainer.addEventListener("touchstart", (event) =>{
 canvasContainer.addEventListener("pointerdown", pointerDownHandler); 
 canvasContainer.addEventListener("pointermove", pointerMoveHandler);
 canvasContainer.addEventListener("pointerup", pointerUpHandler);
-// canvasContainer.addEventListener("pointercancel", pointerUpHandler);
-// canvasContainer.addEventListener("pointerout  ", pointerUpHandler);
-// canvasContainer.addEventListener("pointerleave", pointerUpHandler);
+canvasContainer.addEventListener("pointercancel", pointerUpHandler);
+canvasContainer.addEventListener("pointerout  ", pointerUpHandler);
+canvasContainer.addEventListener("pointerleave", pointerUpHandler);
