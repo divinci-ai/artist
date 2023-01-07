@@ -139,6 +139,7 @@ body {
 .sidebar__window {
   display: none;
   width: 250px;
+  max-width: 40vw;
 }
 
 #toolbar_collapse_button {

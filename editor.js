@@ -79,14 +79,10 @@ class CropOperation extends Operation {
     this.points = cropPoints;
   }
 }
-
+const pointerCache = []; 
 const operations = [];
 let translateX = 0;
 let translateY = 0;
-let resizeX1 = 0;
-let resizeY1 = 0;
-let resizeX2 = 0;
-let resizeY2 = 0;
 const CORNER_WIDTH = 10;
 const canvas = document.getElementById("canvas");
 const context = canvas.getContext("2d");
@@ -117,8 +113,6 @@ let dragging = false;
 let resizing = false;
 let drawing = false;
 let currentDrawingShape = null;
-let resizeX = 0;
-let resieY = 0;
 context.imageSmoothingEnabled = false;
 canvas.width = 3000;
 canvas.height = 3000;
@@ -713,16 +707,13 @@ let oldRatio = 0;
 const resizeEventHandler = (event) => {
   const x = getOriginalX(event.offsetX);
   const y = getOriginalY(event.offsetY);
-  const scaleLine = ((x - resizeX1) ** 2 + (y - resizeY1) ** 2) ** 0.5;
-  const referenceLine =
-    ((resizeX2 - resizeX1) ** 2 + (resizeY2 - resizeY1) ** 2) ** 0.5;
-  const ratio = scaleLine / referenceLine;
   let layers = getSelectedLayersAndBoards();
 
   layers.forEach((layer) => {
-    layer.scale += oldRatio != 0 ? ratio - oldRatio : 0;
+    const dx = x - (layer.posX + layer.width); 
+    const dy = (layer.posY + layer.getScaledHeight()) - y; 
+    layer.scale = ((layer.width + dx)/layer.width); 
   });
-  oldRatio = ratio;
   drawCanvas();
 };
 
@@ -806,12 +797,6 @@ const isPointerOverCorner = (event, mousedown) => {
       Math.abs(event.offsetX - getTransformedX(layer.posX)) < CORNER_WIDTH &&
       Math.abs(event.offsetY - getTransformedY(layer.posY)) < CORNER_WIDTH
     ) {
-      if (mousedown) {
-        resizeX2 = getOriginalX(layer.posX);
-        resizeY2 = getOriginalY(layer.posY);
-        resizeX1 = getOriginalX(layer.posX) + layer.getScaledWidth();
-        resizeY1 = getOriginalY(layer.posY) + layer.getScaledHeight();
-      }
       return true;
     } else if (
       Math.abs(
@@ -835,12 +820,6 @@ const isPointerOverCorner = (event, mousedown) => {
         event.offsetY - getTransformedY(layer.posY + layer.getScaledHeight())
       ) < CORNER_WIDTH
     ) {
-      if (mousedown) {
-        resizeX1 = getOriginalX(layer.posX);
-        resizeY1 = getOriginalY(layer.posY);
-        resizeX2 = getOriginalX(layer.posX) + layer.getScaledWidth();
-        resizeY2 = getOriginalY(layer.posY) + layer.getScaledHeight();
-      }
       return true;
     } else return false;
   }
@@ -951,7 +930,6 @@ document.addEventListener("pointerup", (event) => {
   else if (dragging) dragging = false;
   else if (resizing) {
     resizing = false;
-    oldRatio = 0;
   } else if (drawing) {
     drawing = false;
   }
@@ -1091,7 +1069,7 @@ sidebarSelectionItems.forEach((item) =>
 //   updateBackgroundCanvasSize();
 //   drawBackground();
 // });
-const pointerCache = []; 
+
 const pointerDownHandler = (event) => {
   pointerCache.push(event); 
 }
