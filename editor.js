@@ -786,7 +786,7 @@ const createProduct = (event, c) => {
   });
 };
 
-canvas.addEventListener("mousemove", (event) => {
+canvas.addEventListener("pointermove", (event) => {
   if (resizing) resizeEventHandler(event);
   else if (isPointerOverCorner(event, false)) canvas.style.cursor = "grab";
   else if (mode === "board" && drawing) drawBoardEventHandler(event);
@@ -852,14 +852,14 @@ canvas.addEventListener("dragover", (event) => {
   event.preventDefault();
   return false;
 });
-canvasContainer.addEventListener("mousedown", (event) => {
-  if (spaceDown) {
+canvasContainer.addEventListener("pointerdown", (event) => {
+  if (spaceDown || mode ==="pan") {
     setStartPoints(event);
     panning = true;
   }
 });
 
-canvas.addEventListener("mousedown", (event) => {
+canvas.addEventListener("pointerdown", (event) => {
   if (spaceDown) return;
   else if (isPointerOverCorner(event, true)) startResize(event);
   else if (mode == "crop") lassoCropEventHandler(event);
@@ -867,7 +867,7 @@ canvas.addEventListener("mousedown", (event) => {
   else if (mode === "board") drawBoardStartEventHandler(event);
 });
 
-canvasContainer.addEventListener("mousemove", (event) => {
+canvasContainer.addEventListener("pointermove", (event) => {
   if (panning) {
     dx = event.offsetX - start.x;
     dy = event.offsetY - start.y;
@@ -937,7 +937,7 @@ const getTransformedY = (y) => {
   return (y + translateY) * scale;
 };
 
-document.addEventListener("mouseup", (event) => {
+document.addEventListener("pointerup", (event) => {
   if (panning) panning = false;
   else if (dragging) dragging = false;
   else if (resizing) {
@@ -1073,3 +1073,48 @@ sidebarSelectionItems.forEach((item) =>
 //   updateBackgroundCanvasSize();
 //   drawBackground();
 // });
+const pointerCache = []; 
+const pointerDownHandler = (event) => {
+  pointerCache.push(event); 
+}
+let prevDist = 0; 
+let curDist = 0; 
+const pointerMoveHandler = (event) => {
+  const index = pointerCache.findIndex(pointer => pointer.pointerId === event.pointerId);
+  pointerCache[index] = event; 
+
+  if(pointerCache.length == 2){
+     curDist = Math.abs(pointerCache[0].offsetX - pointerCache[1].offsetX)  ;
+     console.log(curDist) 
+    if(curDist > prevDist){
+      scale *= 1.02; 
+      drawCanvas();
+    }else {
+      scale /= 1.02; 
+      drawCanvas(); 
+    }
+     
+    prevDist = curDist; 
+  }
+}
+
+const pointerUpHandler = (event) => {
+  const index = pointerCache.findIndex(pointer => pointer.pointerId === event.pointerId); 
+  pointerCache.splice(index,1); 
+  console.log(`removed index ${index} and pointer`)
+}
+editorContainer.addEventListener("touchstart", (event) =>{
+  if(event.touches.length > 1){
+    // const x =  event.touches[0].clientX - canvasContainer.getBoundingClientRect().left;
+    // const y = event.touches[0].clientY - canvasContainer.getBoundingClientRect().top;
+    event.preventDefault()
+}
+})
+
+
+canvasContainer.addEventListener("pointerdown", pointerDownHandler); 
+canvasContainer.addEventListener("pointermove", pointerMoveHandler);
+canvasContainer.addEventListener("pointerup", pointerUpHandler);
+// canvasContainer.addEventListener("pointercancel", pointerUpHandler);
+// canvasContainer.addEventListener("pointerout  ", pointerUpHandler);
+// canvasContainer.addEventListener("pointerleave", pointerUpHandler);
