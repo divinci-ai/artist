@@ -12,8 +12,8 @@ class ImageLayer extends Layer {
     else super();
     this.image = image;
     this.canvas = document.createElement("canvas");
-    this.width = image.width;
-    this.height = image.height;
+    this.width = image.imgWidth;
+    this.height = image.imgHeight;
     this.canvas.width = this.width;
     this.canvas.height = this.height;
     this.posX = posX;
@@ -107,7 +107,7 @@ const toolbarCollapseButton = document.getElementById(
   "toolbar_collapse_button"
 );
 
-let mode = "move";
+let mode = "pan";
 let scale = 1;
 let dragging = false;
 let resizing = false;
@@ -522,8 +522,11 @@ const isPointWithinLayer = (posX, posY, layer) => {
 };
 const addImage = (image, posX, posY) => {
   if (image.naturalWidth && image.naturalHeight) {
-    image.width = image.naturalWidth;
-    image.height = image.naturalHeight;
+    image.imgWidth = image.naturalWidth;
+    image.imgHeight = image.naturalHeight;
+  } else {
+    image.imgWidth = image.width; 
+    image.imgHeight = image.height; 
   }
 
   const board = getBoard(posX, posY, image.width, image.height);
@@ -703,7 +706,6 @@ const drawBoardEventHandler = (event) => {
   board.height = height;
   drawCanvas();
 };
-let oldRatio = 0;
 const resizeEventHandler = (event) => {
   const x = getOriginalX(event.offsetX);
   const y = getOriginalY(event.offsetY);
@@ -1005,7 +1007,7 @@ txt2imgForm.addEventListener("submit", (event) => {
     const touchX = event.changedTouches[0].clientX;
     const touchY = event.changedTouches[0].clientY; 
     if(touchX > rect.left && touchY > rect.top && touchX < rect.right && touchY <  rect.bottom  ){
-      addImage(result, touchX - rect.left, touchY - rect.top);  
+      addImage(result, getOriginalX(touchX - rect.left), getOriginalY(touchY - rect.top));  
     }
   })
 
