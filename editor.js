@@ -782,14 +782,14 @@ canvas.addEventListener("pointermove", (event) => {
     return;
   }
   else if (resizing) resizeEventHandler(event);
-  else if (isPointerOverCorner(event, false)) canvas.style.cursor = "grab";
+  else if (isPointerOverCorner(event)) canvas.style.cursor = "grab";
   else if (mode === "board" && drawing) drawBoardEventHandler(event);
   else if (spaceDown) canvas.style.cursor = "grab";
   else canvas.style.cursor = "url(assets/cursor.png),pointer";
   
 });
 //TODO: change pointer icon
-const isPointerOverCorner = (event, mousedown) => {
+const isPointerOverCorner = (event) => {
   let layers = getSelectedLayersAndBoards();
 
   for (const layer of layers) {
