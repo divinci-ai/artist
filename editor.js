@@ -12,8 +12,8 @@ class ImageLayer extends Layer {
     else super();
     this.image = image;
     this.canvas = document.createElement("canvas");
-    this.width = image.width;
-    this.height = image.height;
+    this.width = image.imgWidth;
+    this.height = image.imgHeight;
     this.canvas.width = this.width;
     this.canvas.height = this.height;
     this.posX = posX;
@@ -74,9 +74,10 @@ class MoveOperation extends Operation {
 }
 
 class CropOperation extends Operation {
-  constructor(layerID, cropPoints) {
+  constructor(layerID, cropPoints, scale) {
     super(layerID);
     this.points = cropPoints;
+    this.scale = scale; 
   }
 }
 const pointerCache = []; 
@@ -107,7 +108,7 @@ const toolbarCollapseButton = document.getElementById(
   "toolbar_collapse_button"
 );
 
-let mode = "move";
+let mode = "pan";
 let scale = 1;
 let dragging = false;
 let resizing = false;
@@ -313,15 +314,30 @@ const getTransformForm = () => {
   const promptInput = document.createElement("input");
   const negativePromptInput = document.createElement("input");
   const stepsInput = document.createElement("input");
+  
   const submitButton = document.createElement("button");
   transformForm.addEventListener("keydown", (event) => {
     event.stopPropagation();
   });
   stepsInput.type = "number";
   stepsInput.name = "steps";
+  
+  promptInput.name="prompt"; 
+  promptInput.placeholder="prompt"; 
+  promptInput.defaultValue="nvinkpunk"
+  const strengthInput = document.createElement("input");
+  strengthInput.type = "number";
+  strengthInput.step="any";
+  strengthInput.name = "strength";
+  strengthInput.placeholder = "strength";
+  strengthInput.defaultValue = 0.4;
 
-  promptInput.placeholder = "prompt";
-  promptInput.name = "prompt";
+  const cfgInput = document.createElement("input");
+  cfgInput.type = "number";
+  cfgInput.name = "cfg";
+  cfgInput.placeholder = "cfg";
+  cfgInput.step="any";
+  cfgInput.defaultValue = 7.5;
 
   negativePromptInput.placeholder = "negative prompt";
   negativePromptInput.name = "negativePrompt";
@@ -334,6 +350,8 @@ const getTransformForm = () => {
   transformForm.appendChild(promptInput);
   transformForm.appendChild(negativePromptInput);
   transformForm.appendChild(stepsInput);
+  transformForm.appendChild(strengthInput);
+  transformForm.appendChild(cfgInput);
   transformForm.appendChild(submitButton);
   transformForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -360,12 +378,22 @@ const transformImage = (event) => {
   } else {
     c = layer.canvas;
   }
+
+  if(c.width > 512 ){
+    const temp = document.createElement("canvas"); 
+    temp.width=512;
+    temp.height=768;
+    const tempContext = temp.getContext('2d');
+    console.log("loaded temp canvas");
+    tempContext.drawImage(c, 0,0,512,768);
+    c=temp;
+  }
   
   c.toBlob((blob) => {
     fetch(
       `https://ai.divinci.shop/img2img?prompt=${data.get(
         "prompt"
-      )}&steps=${data.get("steps")}&negativePrompt=${data.get(
+      )}&steps=${data.get("steps")}&cfg=${data.get("cfg")}&strength=${data.get("strength")}&negativePrompt=${data.get(
         "negativePrompt"
       )}`,
       {
@@ -522,8 +550,11 @@ const isPointWithinLayer = (posX, posY, layer) => {
 };
 const addImage = (image, posX, posY) => {
   if (image.naturalWidth && image.naturalHeight) {
-    image.width = image.naturalWidth;
-    image.height = image.naturalHeight;
+    image.imgWidth = image.naturalWidth;
+    image.imgHeight = image.naturalHeight;
+  } else {
+    image.imgWidth = image.width; 
+    image.imgHeight = image.height; 
   }
 
   const board = getBoard(posX, posY, image.width, image.height);
@@ -624,7 +655,7 @@ const lassoCrop = () => {
     points.forEach((point) => {
       relativePoints.push({ x: point.x - layer.posX, y: point.y - layer.posY });
     });
-    const operation = new CropOperation(layer.id, [...relativePoints]);
+    const operation = new CropOperation(layer.id, [...relativePoints], layer.scale);
     operations.push(operation);
   });
   drawCanvas();
@@ -637,7 +668,7 @@ const applyCrop = (operation, layer) => {
   cropContext.globalCompositeOperation = "destination-out";
   cropContext.beginPath();
   operationPoints.forEach((point) => {
-    cropContext.lineTo(point.x, point.y);
+    cropContext.lineTo(point.x/operation.scale, point.y/operation.scale);
   });
   cropContext.closePath();
   cropContext.fill();
@@ -703,7 +734,6 @@ const drawBoardEventHandler = (event) => {
   board.height = height;
   drawCanvas();
 };
-let oldRatio = 0;
 const resizeEventHandler = (event) => {
   const x = getOriginalX(event.offsetX);
   const y = getOriginalY(event.offsetY);
@@ -1005,7 +1035,7 @@ txt2imgForm.addEventListener("submit", (event) => {
     const touchX = event.changedTouches[0].clientX;
     const touchY = event.changedTouches[0].clientY; 
     if(touchX > rect.left && touchY > rect.top && touchX < rect.right && touchY <  rect.bottom  ){
-      addImage(result, touchX - rect.left, touchY - rect.top);  
+      addImage(result, getOriginalX(touchX - rect.left), getOriginalY(touchY - rect.top));  
     }
   })
 
@@ -1115,6 +1145,29 @@ editorContainer.addEventListener("touchstart", (event) =>{
 }
 })
 
+document.getElementById("input_file").addEventListener('change', event => {
+  var input = event.target;
+  console.log("before onload");
+  
+  console.log("loaded");
+  var  reader = new FileReader();
+  const output = new Image();
+    reader.onload = function(){
+      var dataURL = reader.result;
+      console.log("output");
+      
+      output.src = dataURL;
+      
+        console.log("log")
+        
+  };
+  reader.readAsDataURL(input.files[0]);
+  output.addEventListener("load", () => {
+    output.width=512; 
+    output.height=512;
+    addImage(output, translateX, translateY);
+  });
+});
 
 canvasContainer.addEventListener("pointerdown", pointerDownHandler); 
 canvasContainer.addEventListener("pointermove", pointerMoveHandler);
