@@ -314,15 +314,30 @@ const getTransformForm = () => {
   const promptInput = document.createElement("input");
   const negativePromptInput = document.createElement("input");
   const stepsInput = document.createElement("input");
+  
   const submitButton = document.createElement("button");
   transformForm.addEventListener("keydown", (event) => {
     event.stopPropagation();
   });
   stepsInput.type = "number";
   stepsInput.name = "steps";
+  
+  promptInput.name="prompt"; 
+  promptInput.placeholder="prompt"; 
+  promptInput.defaultValue="nvinkpunk"
+  const strengthInput = document.createElement("input");
+  strengthInput.type = "number";
+  strengthInput.step="any";
+  strengthInput.name = "strength";
+  strengthInput.placeholder = "strength";
+  strengthInput.defaultValue = 0.4;
 
-  promptInput.placeholder = "prompt";
-  promptInput.name = "prompt";
+  const cfgInput = document.createElement("input");
+  cfgInput.type = "number";
+  cfgInput.name = "cfg";
+  cfgInput.placeholder = "cfg";
+  cfgInput.step="any";
+  cfgInput.defaultValue = 7.5;
 
   negativePromptInput.placeholder = "negative prompt";
   negativePromptInput.name = "negativePrompt";
@@ -335,6 +350,8 @@ const getTransformForm = () => {
   transformForm.appendChild(promptInput);
   transformForm.appendChild(negativePromptInput);
   transformForm.appendChild(stepsInput);
+  transformForm.appendChild(strengthInput);
+  transformForm.appendChild(cfgInput);
   transformForm.appendChild(submitButton);
   transformForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -361,12 +378,22 @@ const transformImage = (event) => {
   } else {
     c = layer.canvas;
   }
+
+  if(c.width > 512 ){
+    const temp = document.createElement("canvas"); 
+    temp.width=512;
+    temp.height=768;
+    const tempContext = temp.getContext('2d');
+    console.log("loaded temp canvas");
+    tempContext.drawImage(c, 0,0,512,768);
+    c=temp;
+  }
   
   c.toBlob((blob) => {
     fetch(
       `https://ai.divinci.shop/img2img?prompt=${data.get(
         "prompt"
-      )}&steps=${data.get("steps")}&negativePrompt=${data.get(
+      )}&steps=${data.get("steps")}&cfg=${data.get("cfg")}&strength=${data.get("strength")}&negativePrompt=${data.get(
         "negativePrompt"
       )}`,
       {
@@ -1118,6 +1145,29 @@ editorContainer.addEventListener("touchstart", (event) =>{
 }
 })
 
+document.getElementById("input_file").addEventListener('change', event => {
+  var input = event.target;
+  console.log("before onload");
+  
+  console.log("loaded");
+  var  reader = new FileReader();
+  const output = new Image();
+    reader.onload = function(){
+      var dataURL = reader.result;
+      console.log("output");
+      
+      output.src = dataURL;
+      
+        console.log("log")
+        
+  };
+  reader.readAsDataURL(input.files[0]);
+  output.addEventListener("load", () => {
+    output.width=512; 
+    output.height=512;
+    addImage(output, translateX, translateY);
+  });
+});
 
 canvasContainer.addEventListener("pointerdown", pointerDownHandler); 
 canvasContainer.addEventListener("pointermove", pointerMoveHandler);
