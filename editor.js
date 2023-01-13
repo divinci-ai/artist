@@ -81,7 +81,7 @@ class CropOperation extends Operation {
   }
 }
 
-const modelNames = ['ruffbotanic-weetch', 'ruffbotanic','ruffwatercolor-weetch','ruffwatercolor', 'weetch-1', 'weetch-2', 'weetch-3', 'weetch-4', 'weetch-5']; 
+const modelNames = ['ruffbotanic-v1','ruffbotanic-weetch', 'ruffbotanic','ruffwatercolor-weetch','ruffwatercolor', 'weetch-1', 'weetch-2', 'weetch-3', 'weetch-4', 'weetch-5']; 
 const dragPointer = [];
 const pointerCache = [];
 const operations = [];
