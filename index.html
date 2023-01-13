@@ -11,16 +11,18 @@
   </head>
   <body onload="init()">
     <div id="editor_container">
-      <div id="toolbar_collapse_button"><img src="assets/menu.svg" height="25px" /></div>
+      <div id="toolbar_collapse_button">
+        <img src="assets/menu.svg" height="25px" />
+      </div>
       <div id="toolbar">
         <div id="pan" class="toolbar__item active" value="pan">
           <img class="icon" src="assets/pan.svg" height="25px" width="25px" />
           <p>move</p>
-        </div>  
+        </div>
         <div id="move" class="toolbar__item" value="move">
           <img class="icon" src="assets/move.svg" height="25px" width="25px" />
           <p>move</p>
-        </div>  
+        </div>
         <div id="crop" class="toolbar__item" value="crop">
           <img src="assets/crop.svg" height="25px" width="25px" />
           <p>crop</p>
@@ -29,7 +31,6 @@
           <img class="icon" src="assets/board.svg" height="25px" width="25px" />
           <p>board</p>
         </div>
-        
       </div>
       <div id="editor_container_flex">
         <div id="canvas_container">
@@ -39,11 +40,9 @@
         <div id="sidebar">
           <div id="sidebar_windows">
             <div id="sidebar_generate" class="sidebar__window">
-              <form id="txt2img_form">
-                <input type="text" name="prompt" />
-                <button type="submit">submit</button>
-                <input type="file" id="input_file"/>
-              </form>
+              <div id="txt2img_form">
+                <input type="file" id="input_file" />
+              </div>
 
               <button id="save_button">save design</button>
               <button id="save_mockup_button">save mockup</button>
@@ -90,7 +89,7 @@
                 class="sidebar__selection"
                 forWindow="layers"
               >
-              <img src="assets/layers.svg" width="30px" height="30px" />
+                <img src="assets/layers.svg" width="30px" height="30px" />
                 <p>Layers</p>
               </div>
             </div>

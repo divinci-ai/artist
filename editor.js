@@ -77,10 +77,13 @@ class CropOperation extends Operation {
   constructor(layerID, cropPoints, scale) {
     super(layerID);
     this.points = cropPoints;
-    this.scale = scale; 
+    this.scale = scale;
   }
 }
-const pointerCache = []; 
+
+const modelNames = ['ruffbotanic-weetch', 'ruffbotanic','ruffwatercolor-weetch','ruffwatercolor', 'weetch-1', 'weetch-2', 'weetch-3', 'weetch-4', 'weetch-5']; 
+const dragPointer = [];
+const pointerCache = [];
 const operations = [];
 let translateX = 0;
 let translateY = 0;
@@ -128,7 +131,7 @@ const layerMap = new Map();
 const init = () => {
   const tshirtImage = document.createElement("img");
   tshirtImage.src = "tshirt.png";
-
+  txt2imgForm.appendChild(getGenerateForm()); 
   // layerMap.set("tshirt", new ImageLayer("tshirt", tshirtImage));
   //height is 952
   // const px = 1061 / 2 - 450 / 2;
@@ -309,42 +312,51 @@ const addLayerElement = (layer, isChild = false) => {
   layers.appendChild(layerDiv);
 };
 
-const getTransformForm = () => {
+const getForm = () => {
   const transformForm = document.createElement("form");
   const promptInput = document.createElement("input");
   const negativePromptInput = document.createElement("input");
   const stepsInput = document.createElement("input");
-  
+  const modelInput = document.createElement("select"); 
+  modelInput.name="model"; 
+  modelInput.defaultValue=modelNames[0];
+  modelNames.forEach(model => {
+    const modelOption = document.createElement("option"); 
+    modelOption.value = model; 
+    modelOption.innerText = model;
+    modelInput.appendChild(modelOption); 
+  }); 
+ 
   const submitButton = document.createElement("button");
   transformForm.addEventListener("keydown", (event) => {
     event.stopPropagation();
   });
   stepsInput.type = "number";
   stepsInput.name = "steps";
-  
-  promptInput.name="prompt"; 
-  promptInput.placeholder="prompt"; 
-  promptInput.defaultValue="nvinkpunk"
+
+  promptInput.name = "prompt";
+  promptInput.placeholder = "prompt";
+  promptInput.defaultValue = "";
   const strengthInput = document.createElement("input");
   strengthInput.type = "number";
-  strengthInput.step="any";
+  strengthInput.step = "any";
   strengthInput.name = "strength";
   strengthInput.placeholder = "strength";
-  strengthInput.defaultValue = 0.4;
+  strengthInput.defaultValue = 0.2;
 
   const cfgInput = document.createElement("input");
   cfgInput.type = "number";
   cfgInput.name = "cfg";
   cfgInput.placeholder = "cfg";
-  cfgInput.step="any";
+  cfgInput.step = "any";
   cfgInput.defaultValue = 7.5;
 
   negativePromptInput.placeholder = "negative prompt";
   negativePromptInput.name = "negativePrompt";
-
+  negativePromptInput.defaultValue = "Ugly, mutilated, bad anatomy, bad face";
   stepsInput.placeholder = "steps";
-  stepsInput.defaultValue = 20;
-  submitButton.innerText = "Transform";
+  stepsInput.defaultValue = 25;
+  submitButton.innerText = "submit";
   submitButton.type = "submit";
 
   transformForm.appendChild(promptInput);
@@ -352,15 +364,75 @@ const getTransformForm = () => {
   transformForm.appendChild(stepsInput);
   transformForm.appendChild(strengthInput);
   transformForm.appendChild(cfgInput);
+  transformForm.appendChild(modelInput); 
   transformForm.appendChild(submitButton);
+  transformForm.classList.add("transform__form");
+  submitButton.classList.add("transform__button");
+  return transformForm;
+};
+
+const getTransformForm = () => {
+  const transformForm = getForm();
   transformForm.addEventListener("submit", (event) => {
     event.preventDefault();
     transformImage(event);
     event.stopPropagation();
   });
-  transformForm.classList.add("transform__form");
-  submitButton.classList.add("transform__button");
   return transformForm;
+};
+
+const getGenerateForm = () => {
+  const generateForm = getForm();
+  generateForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    generateImage(event);
+    event.stopPropagation();
+  });
+  return generateForm;
+};
+
+const generateImage = (event) => {
+  data = new FormData(event.target);
+  const result = document.createElement("img");
+  result.classList.add("txt2img__result");
+
+  result.addEventListener("dragstart", (event) => {
+    event.dataTransfer.setData("Text", event.target.src);
+  });
+
+  result.addEventListener("touchend", (event) => {
+    const rect = canvasContainer.getBoundingClientRect();
+    const touchX = event.changedTouches[0].clientX;
+    const touchY = event.changedTouches[0].clientY;
+    if (
+      touchX > rect.left &&
+      touchY > rect.top &&
+      touchX < rect.right &&
+      touchY < rect.bottom
+    ) {
+      addImage(
+        result,
+        getOriginalX(touchX - rect.left),
+        getOriginalY(touchY - rect.top)
+      );
+    }
+  });
+
+  fetch(
+    `https://ai.divinci.shop/txt2img?prompt=${data.get(
+      "prompt"
+    )}&steps=${data.get("steps")}&cfg=${data.get("cfg")}&strength=${data.get(
+      "strength"
+    )}&negativePrompt=${data.get("negativePrompt")}&model=${data.get("model")}`
+  )
+    .then((response) => response.blob())
+    .then((blob) => URL.createObjectURL(blob))
+    .then((objectURL) => {
+      result.src = objectURL;
+    })
+    .then((foo) => {
+      txt2imgResults.appendChild(result);
+    });
 };
 
 const transformImage = (event) => {
@@ -379,23 +451,23 @@ const transformImage = (event) => {
     c = layer.canvas;
   }
 
-  if(c.width > 512 ){
-    const temp = document.createElement("canvas"); 
-    temp.width=512;
-    temp.height=768;
-    const tempContext = temp.getContext('2d');
+  if (c.width > 512) {
+    const temp = document.createElement("canvas");
+    temp.width = 512;
+    temp.height = 768;
+    const tempContext = temp.getContext("2d");
     console.log("loaded temp canvas");
-    tempContext.drawImage(c, 0,0,512,768);
-    c=temp;
+    tempContext.drawImage(c, 0, 0, 512, 768);
+    c = temp;
   }
-  
+
   c.toBlob((blob) => {
     fetch(
       `https://ai.divinci.shop/img2img?prompt=${data.get(
         "prompt"
-      )}&steps=${data.get("steps")}&cfg=${data.get("cfg")}&strength=${data.get("strength")}&negativePrompt=${data.get(
-        "negativePrompt"
-      )}`,
+      )}&steps=${data.get("steps")}&cfg=${data.get("cfg")}&strength=${data.get(
+        "strength"
+      )}&negativePrompt=${data.get("negativePrompt")}`,
       {
         method: "PUT",
         body: blob,
@@ -404,18 +476,16 @@ const transformImage = (event) => {
       .then((response) => response.blob())
       .then((blob) => URL.createObjectURL(blob))
       .then((objectURL) => {
-        const result = new Image(); 
-        result.src = objectURL; 
+        const result = new Image();
+        result.src = objectURL;
         return result;
-      } 
-      )
+      })
       .then((result) => {
-        result.onload  = () => {
+        result.onload = () => {
           result.width = 512;
           result.height = 512;
           addImage(result, layer.posX, layer.posY);
-        }
-   
+        };
       });
   });
 
@@ -553,8 +623,8 @@ const addImage = (image, posX, posY) => {
     image.imgWidth = image.naturalWidth;
     image.imgHeight = image.naturalHeight;
   } else {
-    image.imgWidth = image.width; 
-    image.imgHeight = image.height; 
+    image.imgWidth = image.width;
+    image.imgHeight = image.height;
   }
 
   const board = getBoard(posX, posY, image.width, image.height);
@@ -655,7 +725,11 @@ const lassoCrop = () => {
     points.forEach((point) => {
       relativePoints.push({ x: point.x - layer.posX, y: point.y - layer.posY });
     });
-    const operation = new CropOperation(layer.id, [...relativePoints], layer.scale);
+    const operation = new CropOperation(
+      layer.id,
+      [...relativePoints],
+      layer.scale
+    );
     operations.push(operation);
   });
   drawCanvas();
@@ -668,7 +742,7 @@ const applyCrop = (operation, layer) => {
   cropContext.globalCompositeOperation = "destination-out";
   cropContext.beginPath();
   operationPoints.forEach((point) => {
-    cropContext.lineTo(point.x/operation.scale, point.y/operation.scale);
+    cropContext.lineTo(point.x / operation.scale, point.y / operation.scale);
   });
   cropContext.closePath();
   cropContext.fill();
@@ -740,9 +814,9 @@ const resizeEventHandler = (event) => {
   let layers = getSelectedLayersAndBoards();
 
   layers.forEach((layer) => {
-    const dx = x - (layer.posX + layer.width); 
-    const dy = (layer.posY + layer.getScaledHeight()) - y; 
-    layer.scale = ((layer.width + dx)/layer.width); 
+    const dx = x - (layer.posX + layer.width);
+    const dy = layer.posY + layer.getScaledHeight() - y;
+    layer.scale = (layer.width + dx) / layer.width;
   });
   drawCanvas();
 };
@@ -808,15 +882,13 @@ const createProduct = (event, c) => {
 };
 
 canvas.addEventListener("pointermove", (event) => {
-  if(pointerCache.length==2){
+  if (pointerCache.length == 2) {
     return;
-  }
-  else if (resizing) resizeEventHandler(event);
+  } else if (resizing) resizeEventHandler(event);
   else if (isPointerOverCorner(event)) canvas.style.cursor = "grab";
   else if (mode === "board" && drawing) drawBoardEventHandler(event);
   else if (spaceDown) canvas.style.cursor = "grab";
   else canvas.style.cursor = "url(assets/cursor.png),pointer";
-  
 });
 //TODO: change pointer icon
 const isPointerOverCorner = (event) => {
@@ -865,14 +937,14 @@ canvas.addEventListener("dragover", (event) => {
   return false;
 });
 canvasContainer.addEventListener("pointerdown", (event) => {
-  if (spaceDown || mode ==="pan") {
+  if (spaceDown || mode === "pan") {
     setStartPoints(event);
     panning = true;
   }
 });
 
 canvas.addEventListener("pointerdown", (event) => {
-  if(pointerCache.length==2) return;
+  if (pointerCache.length == 2) return;
   else if (spaceDown) return;
   else if (isPointerOverCorner(event, true)) startResize(event);
   else if (mode == "crop") lassoCropEventHandler(event);
@@ -881,7 +953,7 @@ canvas.addEventListener("pointerdown", (event) => {
 });
 
 canvasContainer.addEventListener("pointermove", (event) => {
-  if(pointerCache.length==2) return;
+  if (pointerCache.length == 2) return;
   else if (panning) {
     dx = event.offsetX - start.x;
     dy = event.offsetY - start.y;
@@ -905,10 +977,10 @@ canvasContainer.addEventListener("pointermove", (event) => {
 const ACTIVE_CLASS = "active";
 const clearCrop = () => {
   points.splice(0, points.length);
-  drawCanvas(); 
-}
+  drawCanvas();
+};
 const setMode = (event) => {
-  if(mode==="crop") clearCrop(); 
+  if (mode === "crop") clearCrop();
   toolbarItems.forEach((item) => item.classList.remove(ACTIVE_CLASS));
   event.target.classList.add(ACTIVE_CLASS);
   mode = event.target.getAttribute("value");
@@ -933,7 +1005,7 @@ editorContainer.addEventListener("wheel", (e) => {
 
 sidebar.addEventListener("wheel", (event) => {
   event.stopPropagation();
-})
+});
 const getOriginal = (x, y) => {
   const original = { x: x / scale - translateX, y: y / scale - translateY };
   return original;
@@ -1019,7 +1091,6 @@ productForm.addEventListener("submit", (event) => {
   );
   createProduct(event, tempCanvas);
 });
-const dragPointer = [];
 txt2imgForm.addEventListener("submit", (event) => {
   event.preventDefault();
   data = new FormData(event.target);
@@ -1030,14 +1101,23 @@ txt2imgForm.addEventListener("submit", (event) => {
     event.dataTransfer.setData("Text", event.target.src);
   });
 
-  result.addEventListener("touchend", (event)=> {
+  result.addEventListener("touchend", (event) => {
     const rect = canvasContainer.getBoundingClientRect();
     const touchX = event.changedTouches[0].clientX;
-    const touchY = event.changedTouches[0].clientY; 
-    if(touchX > rect.left && touchY > rect.top && touchX < rect.right && touchY <  rect.bottom  ){
-      addImage(result, getOriginalX(touchX - rect.left), getOriginalY(touchY - rect.top));  
+    const touchY = event.changedTouches[0].clientY;
+    if (
+      touchX > rect.left &&
+      touchY > rect.top &&
+      touchX < rect.right &&
+      touchY < rect.bottom
+    ) {
+      addImage(
+        result,
+        getOriginalX(touchX - rect.left),
+        getOriginalY(touchY - rect.top)
+      );
     }
-  })
+  });
 
   fetch(`https://ai.divinci.shop/txt2img?prompt=${data.get("prompt")}&steps=30`)
     .then((response) => response.blob())
@@ -1101,75 +1181,83 @@ sidebarSelectionItems.forEach((item) =>
 // });
 
 const pointerDownHandler = (event) => {
-  pointerCache.push(event); 
-}
-let prevDist = 0; 
-let curDist = 0; 
+  pointerCache.push(event);
+};
+let prevDist = 0;
+let curDist = 0;
 const pointerMoveHandler = (event) => {
-  const index = pointerCache.findIndex(pointer => pointer.pointerId === event.pointerId);
-  pointerCache[index] = event; 
+  const index = pointerCache.findIndex(
+    (pointer) => pointer.pointerId === event.pointerId
+  );
+  pointerCache[index] = event;
 
-  if(pointerCache.length == 2){
-    const midPointX = (pointerCache[0].offsetX+pointerCache[1].offsetX)/2; 
-    const midPointY = ((pointerCache[0].offsetY+pointerCache[1].offsetY)/2);
-    curDist = ((pointerCache[1].offsetX - pointerCache[0].offsetX)**2 + (pointerCache[1].offsetY - pointerCache[0].offsetY)**2)**0.5  ;
+  if (pointerCache.length == 2) {
+    const midPointX = (pointerCache[0].offsetX + pointerCache[1].offsetX) / 2;
+    const midPointY = (pointerCache[0].offsetY + pointerCache[1].offsetY) / 2;
+    curDist =
+      ((pointerCache[1].offsetX - pointerCache[0].offsetX) ** 2 +
+        (pointerCache[1].offsetY - pointerCache[0].offsetY) ** 2) **
+      0.5;
     // const original = getOriginal(pointerCache[0].offsetX, pointerCache[0].offsetY);
-    const original = getOriginal(midPointX,midPointY);
+    const original = getOriginal(midPointX, midPointY);
 
-    if(curDist > prevDist){
-      scale *= 1.02; 
-    }else {
-      scale /= 1.02; 
-      
+    if (curDist > prevDist) {
+      scale *= 1.02;
+    } else {
+      scale /= 1.02;
     }
-    // if(prevDist=0) prevDist=curDist;  
+    // if(prevDist=0) prevDist=curDist;
 
-    // scale *= Math.abs(curDist - prevDist)/curDist;   
-    translateX = ((pointerCache[0].offsetX+pointerCache[1].offsetX)/2) / scale - original.x;
-    translateY = ((pointerCache[0].offsetY+pointerCache[1].offsetY)/2) / scale - original.y;
-    prevDist = curDist; 
+    // scale *= Math.abs(curDist - prevDist)/curDist;
+    translateX =
+      (pointerCache[0].offsetX + pointerCache[1].offsetX) / 2 / scale -
+      original.x;
+    translateY =
+      (pointerCache[0].offsetY + pointerCache[1].offsetY) / 2 / scale -
+      original.y;
+    prevDist = curDist;
     drawCanvas();
   }
-}
+};
 
 const pointerUpHandler = (event) => {
-  const index = pointerCache.findIndex(pointer => pointer.pointerId === event.pointerId); 
-  pointerCache.splice(index,1); 
-  
-}
-editorContainer.addEventListener("touchstart", (event) =>{
-  if(event.touches.length > 1){
+  const index = pointerCache.findIndex(
+    (pointer) => pointer.pointerId === event.pointerId
+  );
+  pointerCache.splice(index, 1);
+};
+editorContainer.addEventListener("touchstart", (event) => {
+  if (event.touches.length > 1) {
     // const x =  event.touches[0].clientX - canvasContainer.getBoundingClientRect().left;
     // const y = event.touches[0].clientY - canvasContainer.getBoundingClientRect().top;
-    event.preventDefault()
-}
-})
+    event.preventDefault();
+  }
+});
 
-document.getElementById("input_file").addEventListener('change', event => {
+document.getElementById("input_file").addEventListener("change", (event) => {
   var input = event.target;
   console.log("before onload");
-  
+
   console.log("loaded");
-  var  reader = new FileReader();
+  var reader = new FileReader();
   const output = new Image();
-    reader.onload = function(){
-      var dataURL = reader.result;
-      console.log("output");
-      
-      output.src = dataURL;
-      
-        console.log("log")
-        
+  reader.onload = function () {
+    var dataURL = reader.result;
+    console.log("output");
+
+    output.src = dataURL;
+
+    console.log("log");
   };
   reader.readAsDataURL(input.files[0]);
   output.addEventListener("load", () => {
-    output.width=512; 
-    output.height=512;
+    output.width = 512;
+    output.height = 512;
     addImage(output, translateX, translateY);
   });
 });
 
-canvasContainer.addEventListener("pointerdown", pointerDownHandler); 
+canvasContainer.addEventListener("pointerdown", pointerDownHandler);
 canvasContainer.addEventListener("pointermove", pointerMoveHandler);
 canvasContainer.addEventListener("pointerup", pointerUpHandler);
 canvasContainer.addEventListener("pointercancel", pointerUpHandler);

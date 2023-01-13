@@ -54,6 +54,15 @@ body {
   height: 95vh;
   overflow: scroll;
 }
+
+#sidebar_generate{
+  overflow:hidden; 
+}
+
+#prompt_result{
+  overflow: scroll ;
+  height:100%;
+}
 .active__sidebar__window::-webkit-scrollbar {
   display: none;
 }
