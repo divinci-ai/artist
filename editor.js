@@ -81,7 +81,7 @@ class CropOperation extends Operation {
   }
 }
 
-const modelNames = ['ruffbotanic-v1','ruffbotanic-weetch', 'ruffbotanic','ruffwatercolor-weetch','ruffwatercolor', 'weetch-1', 'weetch-2', 'weetch-3', 'weetch-4', 'weetch-5']; 
+const modelNames = ['ruffbotanic-v5b','ruffbotanic-v5a', 'ruffbotanic-weetch-v5','ruffbotanic-weetch-v4', 'ruffbotanic-weetch-v3', 'ruffbotanic-weetch-v2', 'ruffbotanic-weetch-v1', 'ruffbotanic-v4', 'ruffbotanic-v3', 'ruffbotanic-v2','ruffbotanic-v1','ruffbotanic-weetch', 'ruffbotanic','ruffwatercolor-weetch','ruffwatercolor', 'weetch-1', 'weetch-2', 'weetch-3', 'weetch-4', 'weetch-5']; 
 const dragPointer = [];
 const pointerCache = [];
 const operations = [];
@@ -463,7 +463,7 @@ const transformImage = (event) => {
 
   c.toBlob((blob) => {
     fetch(
-      `https://ai.divinci.shop/img2img?prompt=${data.get(
+      `https://ai.divinci.shop/img2img?model=${data.get('model')}&prompt=${data.get(
         "prompt"
       )}&steps=${data.get("steps")}&cfg=${data.get("cfg")}&strength=${data.get(
         "strength"
