@@ -1,101 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" type="text/css" href="styles.css" />
-    <link rel="stylesheet" type="text/css" href="normalize.css" />
-    <title>Document</title>
-    <script src="editor.js" defer></script>
-  </head>
-  <body onload="init()">
-    <div id="editor_container">
-      <div id="toolbar_collapse_button">
-        <img src="assets/menu.svg" height="25px" />
-      </div>
-      <div id="toolbar">
-        <div id="pan" class="toolbar__item active" value="pan">
-          <img class="icon" src="assets/pan.svg" height="25px" width="25px" />
-          <p>move</p>
-        </div>
-        <div id="move" class="toolbar__item" value="move">
-          <img class="icon" src="assets/move.svg" height="25px" width="25px" />
-          <p>move</p>
-        </div>
-        <div id="crop" class="toolbar__item" value="crop">
-          <img src="assets/crop.svg" height="25px" width="25px" />
-          <p>crop</p>
-        </div>
-        <div id="board" class="toolbar__item" value="board">
-          <img class="icon" src="assets/board.svg" height="25px" width="25px" />
-          <p>board</p>
-        </div>
-      </div>
-      <div id="editor_container_flex">
-        <div id="canvas_container">
-          <canvas id="canvas"></canvas>
-        </div>
-
-        <div id="sidebar">
-          <div id="sidebar_windows">
-            <div id="sidebar_generate" class="sidebar__window">
-              <div id="txt2img_form">
-                <input type="file" id="input_file" />
-              </div>
-
-              <button id="save_button">save design</button>
-              <button id="save_mockup_button">save mockup</button>
-              <div id="prompt_result"></div>
-              <!-- <img class="prompt_result" id="image" src="daftpunk.png" /> -->
-              <img id="tshirt" src="tshirt.png" />
-            </div>
-            <div id="sidebar_product" class="sidebar__window">
-              <form id="create_product_form">
-                <input placeholder="title" type="text" name="title" />
-                <input placeholder="price" type="number" name="price" />
-                <input
-                  placeholder="description"
-                  type="text"
-                  name="description"
-                />
-                <button type="submit">create product</button>
-              </form>
-            </div>
-            <div id="sidebar_layers" class="sidebar__window">
-              <div id="layers"></div>
-            </div>
-          </div>
-          <div id="sidebar_selection">
-            <div id="sidebar_selection_background">
-              <div
-                id="select_generate"
-                class="sidebar__selection"
-                forWindow="generate"
-              >
-                <img src="assets/generate.svg" width="30px" height="30px" />
-                <p>Generate</p>
-              </div>
-              <div
-                id="select_product"
-                class="sidebar__selection"
-                forWindow="product"
-              >
-                <img src="assets/product.svg" width="30px" height="30px" />
-                <p>Product</p>
-              </div>
-              <div
-                id="select_layers"
-                class="sidebar__selection"
-                forWindow="layers"
-              >
-                <img src="assets/layers.svg" width="30px" height="30px" />
-                <p>Layers</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <p>Hello world</p>
+  <a href="./editor.html">click me</a>
+</body>
 </html>

@@ -80,8 +80,38 @@ class CropOperation extends Operation {
     this.scale = scale;
   }
 }
-
-const modelNames = ['ruffbotanic-albertbabycat-v3','ruffbotanic-albertbabycat-v2','ruffbotanic-albertbabycat-v1', 'ruffbotanic-v5b','ruffbotanic-v5a', 'ruffbotanic-weetch-v5','ruffbotanic-weetch-v4', 'ruffbotanic-weetch-v3', 'ruffbotanic-weetch-v2', 'ruffbotanic-weetch-v1', 'ruffbotanic-v4', 'ruffbotanic-v3', 'ruffbotanic-v2','ruffbotanic-v1','ruffbotanic-weetch', 'ruffbotanic','ruffwatercolor-weetch','ruffwatercolor', 'weetch-1', 'weetch-2', 'weetch-3', 'weetch-4', 'weetch-5']; 
+const projectId = 1;
+const modelNames = [
+  "nala_cat/1400",
+  "mr.pokee/1400",
+  "hudsonthefluffycorgi-v1",
+  "hudsonthefluffycorgi",
+  "wtffrenchie-v1",
+  "wtffrenchie",
+  "ruffbotanic-albertbabycat-v3",
+  "ruffbotanic-albertbabycat-v2",
+  "ruffbotanic-albertbabycat-v1",
+  "ruffbotanic-v5b",
+  "ruffbotanic-v5a",
+  "ruffbotanic-weetch-v5",
+  "ruffbotanic-weetch-v4",
+  "ruffbotanic-weetch-v3",
+  "ruffbotanic-weetch-v2",
+  "ruffbotanic-weetch-v1",
+  "ruffbotanic-v4",
+  "ruffbotanic-v3",
+  "ruffbotanic-v2",
+  "ruffbotanic-v1",
+  "ruffbotanic-weetch",
+  "ruffbotanic",
+  "ruffwatercolor-weetch",
+  "ruffwatercolor",
+  "weetch-1",
+  "weetch-2",
+  "weetch-3",
+  "weetch-4",
+  "weetch-5",
+];
 const dragPointer = [];
 const pointerCache = [];
 const operations = [];
@@ -131,7 +161,7 @@ const layerMap = new Map();
 const init = () => {
   const tshirtImage = document.createElement("img");
   tshirtImage.src = "tshirt.png";
-  txt2imgForm.appendChild(getGenerateForm()); 
+  txt2imgForm.appendChild(getGenerateForm());
   // layerMap.set("tshirt", new ImageLayer("tshirt", tshirtImage));
   //height is 952
   // const px = 1061 / 2 - 450 / 2;
@@ -317,16 +347,16 @@ const getForm = () => {
   const promptInput = document.createElement("input");
   const negativePromptInput = document.createElement("input");
   const stepsInput = document.createElement("input");
-  const modelInput = document.createElement("select"); 
-  modelInput.name="model"; 
-  modelInput.defaultValue=modelNames[0];
-  modelNames.forEach(model => {
-    const modelOption = document.createElement("option"); 
-    modelOption.value = model; 
+  const modelInput = document.createElement("select");
+  modelInput.name = "model";
+  modelInput.defaultValue = modelNames[0];
+  modelNames.forEach((model) => {
+    const modelOption = document.createElement("option");
+    modelOption.value = model;
     modelOption.innerText = model;
-    modelInput.appendChild(modelOption); 
-  }); 
- 
+    modelInput.appendChild(modelOption);
+  });
+
   const submitButton = document.createElement("button");
   transformForm.addEventListener("keydown", (event) => {
     event.stopPropagation();
@@ -364,7 +394,7 @@ const getForm = () => {
   transformForm.appendChild(stepsInput);
   transformForm.appendChild(strengthInput);
   transformForm.appendChild(cfgInput);
-  transformForm.appendChild(modelInput); 
+  transformForm.appendChild(modelInput);
   transformForm.appendChild(submitButton);
   transformForm.classList.add("transform__form");
   submitButton.classList.add("transform__button");
@@ -392,6 +422,9 @@ const getGenerateForm = () => {
 };
 
 const generateImage = (event) => {
+  const objFromMap = Object.fromEntries(layerMap);
+  console.log(JSON.stringify(objFromMap));
+
   data = new FormData(event.target);
   const result = document.createElement("img");
   result.classList.add("txt2img__result");
@@ -463,11 +496,13 @@ const transformImage = (event) => {
 
   c.toBlob((blob) => {
     fetch(
-      `https://ai.divinci.shop/img2img?model=${data.get('model')}&prompt=${data.get(
-        "prompt"
-      )}&steps=${data.get("steps")}&cfg=${data.get("cfg")}&strength=${data.get(
-        "strength"
-      )}&negativePrompt=${data.get("negativePrompt")}`,
+      `https://ai.divinci.shop/img2img?model=${data.get(
+        "model"
+      )}&prompt=${data.get("prompt")}&steps=${data.get("steps")}&cfg=${data.get(
+        "cfg"
+      )}&strength=${data.get("strength")}&negativePrompt=${data.get(
+        "negativePrompt"
+      )}`,
       {
         method: "PUT",
         body: blob,
@@ -637,6 +672,8 @@ const addImage = (image, posX, posY) => {
     imageLayer.board = board;
   }
 
+  imageLayer.imageId = crypto.randomUUID();
+  saveImage(imageLayer);
   map.set(imageLayer.id, imageLayer);
   drawCanvas();
   refreshLayers(true);
@@ -864,6 +901,18 @@ const saveDrawing = (c) => {
   });
 };
 
+const saveImage = (imageLayer) => {
+ imageLayer.canvas.toBlob((blob) => {
+    fetch("https://divinci.shop/api/image", {
+      headers:{
+        imageId:imageLayer.imageId
+      },
+      method: "PUT",
+      body: blob,
+    });
+  });
+};
+
 const createProduct = (event, c) => {
   const data = new FormData(event.target);
   //TODO: check if all inputs are correct
@@ -1062,19 +1111,19 @@ document.addEventListener("keyup", function (event) {
 });
 
 //TODO: add artboard layer
-save.addEventListener("click", () => {
-  let design = layerMap.get("Layer 1");
-  const tempCanvas = document.createElement("canvas");
-  const tempContext = tempCanvas.getContext("2d");
-  tempCanvas.width = design.width;
-  tempCanvas.height = design.height;
-  tempContext.putImageData(
-    context.getImageData(design.posX, design.posY, design.width, design.height),
-    0,
-    0
-  );
-  saveDrawing(tempCanvas);
-});
+// save.addEventListener("click", () => {
+//   let design = layerMap.get("Layer 1");
+//   const tempCanvas = document.createElement("canvas");
+//   const tempContext = tempCanvas.getContext("2d");
+//   tempCanvas.width = design.width;
+//   tempCanvas.height = design.height;
+//   tempContext.putImageData(
+//     context.getImageData(design.posX, design.posY, design.width, design.height),
+//     0,
+//     0
+//   );
+//   saveDrawing(tempCanvas);
+// });
 
 productForm.addEventListener("submit", (event) => {
   //TODO: once submit is successful, clear form
@@ -1257,9 +1306,46 @@ document.getElementById("input_file").addEventListener("change", (event) => {
   });
 });
 
+const getLayerObject = (layer) => {
+  const layerObject = {
+    posX: layer.posX,
+    posY: layer.posY,
+    layerTitle: layer.layerTitle,
+    height: layer.height,
+    width: layer.width,
+    scale: layer.scale,
+    id: layer.id,
+  };
+
+  if (layer instanceof Board) {
+    layerObject.isCollapsed = layer.isCollapsed;
+    layerObject.layerMap = {};
+    layer.layerMap.forEach((l, id) => {
+      layerObject.layerMap[id] = getLayerObject(l);
+    });
+  }
+  return layerObject;
+};
+
+const saveProject = () => {
+  const canvas = {};
+  layerMap.forEach((layer, id) => {
+    canvas[id] = getLayerObject(layer);
+  });
+
+  fetch("https://divinci.shop/api/project", {
+    headers: {
+      method: "PUT",
+      projectId: projectId,
+    },
+    body: JSON.stringify(canvas),
+  });
+};
+
 canvasContainer.addEventListener("pointerdown", pointerDownHandler);
 canvasContainer.addEventListener("pointermove", pointerMoveHandler);
 canvasContainer.addEventListener("pointerup", pointerUpHandler);
 canvasContainer.addEventListener("pointercancel", pointerUpHandler);
 canvasContainer.addEventListener("pointerout  ", pointerUpHandler);
 canvasContainer.addEventListener("pointerleave", pointerUpHandler);
+save.addEventListener("click", saveProject);
