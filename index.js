@@ -4,7 +4,7 @@ fetch('https://divinci.shop/api/project').then(response => response.json()).then
 res.keys.forEach(key => {
     const project = document.createElement("a"); 
     project.innerHTML = key.name; 
-    project.href=`./editor.html?projectId=${key.name}&instagramHandle=ruffbotanic&subjectType=style`
+    project.href=`./editor.html?projectId=${key.name}`
     project.classList.add("project");
     projectDirectory.appendChild(project);  
 }));
@@ -15,6 +15,6 @@ projectForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const form = new FormData(event.target); 
     const a = document.createElement("a"); 
-    a.href=`./editor.html?handle=${form.get("handle")}&class=${form.get("class")}`; 
+    a.href=`./editor.html?instagramHandle=${form.get("handle")}&subjectType=${form.get("class")}`; 
     a.click();
 })
