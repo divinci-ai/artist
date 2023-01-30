@@ -1,27 +1,28 @@
 class Layer {
-  constructor(id) {
-    if (id) this.id = id;
-    else this.id = ++layerCount;
-    this.layerTitle = `Layer ${this.id}`;
+  constructor(layer) {
+    if (layer.id) this.id = layer.id;
+    else this.id = crypto.randomUUID();
+    this.layerTitle = `Layer ${++layerCount}`;
   }
 }
 
 class ImageLayer extends Layer {
-  constructor(image, posX = 0, posY = 0, scale = 1, imageCanvas, id) {
-    if (id) super(id);
-    else super();
-    this.image = image;
+  constructor(layer) {
+    super(layer);
+    this.image = layer.image;
     this.canvas = document.createElement("canvas");
-    this.width = image.imgWidth;
-    this.height = image.imgHeight;
+    this.width = layer.image.imgWidth;
+    this.height = layer.image.imgHeight;
     this.canvas.width = this.width;
     this.canvas.height = this.height;
-    this.posX = posX;
-    this.posY = posY;
-    this.scale = scale;
+    this.posX = layer.posX ? layer.posX : 0;
+    this.posY = layer.posY ? layer.posY : 0;
+    this.scale = layer.scale ? layer.scale : 1;
     this.context = this.canvas.getContext("2d");
-    if (imageCanvas) this.context.drawImage(imageCanvas, 0, 0);
-    else this.context.drawImage(image, 0, 0);
+    this.type = "image";
+    layer.imageId ? (this.imageId = layer.imageId) : null;
+    if (layer.imageCanvas) this.context.drawImage(layer.imageCanvas, 0, 0);
+    else this.context.drawImage(layer.image, 0, 0);
   }
 
   getScaledWidth() {
@@ -33,14 +34,14 @@ class ImageLayer extends Layer {
 }
 
 class DrawableLayer extends Layer {
-  constructor(posX, posY, width, height, fill, scale = 1) {
-    super();
-    this.width = width;
-    this.height = height;
-    this.fill = fill;
-    this.posX = posX;
-    this.posY = posY;
-    this.scale = scale;
+  constructor(layer) {
+    super(layer);
+    this.width = layer.width;
+    this.height = layer.height;
+    this.fill = layer.fill;
+    this.posX = layer.posX;
+    this.posY = layer.posY;
+    this.scale = layer.scale ? layer.scale : 1;
   }
   getScaledWidth() {
     return this.width * this.scale;
@@ -51,10 +52,11 @@ class DrawableLayer extends Layer {
 }
 
 class Board extends DrawableLayer {
-  constructor(posX, posY, width, height, fill, scale = 1) {
-    super(posX, posY, width, height, fill, scale);
+  constructor(layer) {
+    super(layer);
     this.layerMap = new Map();
-    this.isCollapsed = false;
+    this.isCollapsed = layer.isCollapsed ? layer.isCollapsed : false;
+    this.type = "board";
   }
   toggleIsCollapsed() {
     this.isCollapsed = !this.isCollapsed;
@@ -80,41 +82,13 @@ class CropOperation extends Operation {
     this.scale = scale;
   }
 }
-const projectId = 1;
-const modelNames = [
-  "nala_cat/1400",
-  "mr.pokee/1400",
-  "hudsonthefluffycorgi-v1",
-  "hudsonthefluffycorgi",
-  "wtffrenchie-v1",
-  "wtffrenchie",
-  "ruffbotanic-albertbabycat-v3",
-  "ruffbotanic-albertbabycat-v2",
-  "ruffbotanic-albertbabycat-v1",
-  "ruffbotanic-v5b",
-  "ruffbotanic-v5a",
-  "ruffbotanic-weetch-v5",
-  "ruffbotanic-weetch-v4",
-  "ruffbotanic-weetch-v3",
-  "ruffbotanic-weetch-v2",
-  "ruffbotanic-weetch-v1",
-  "ruffbotanic-v4",
-  "ruffbotanic-v3",
-  "ruffbotanic-v2",
-  "ruffbotanic-v1",
-  "ruffbotanic-weetch",
-  "ruffbotanic",
-  "ruffwatercolor-weetch",
-  "ruffwatercolor",
-  "weetch-1",
-  "weetch-2",
-  "weetch-3",
-  "weetch-4",
-  "weetch-5",
-];
+
+let selectedLayer;
+const modelNames = ["ruffbotanic-v3"];
 const dragPointer = [];
 const pointerCache = [];
 const operations = [];
+const customerId = crypto.randomUUID();
 let translateX = 0;
 let translateY = 0;
 const CORNER_WIDTH = 10;
@@ -158,10 +132,21 @@ let start = { x: 0, y: 0 };
 let pointX = 0;
 let pointY = 0;
 const layerMap = new Map();
+const url = new URL(window.location.href);
+let subjectType = url.searchParams.get("subjectType") || "";
+let instagramHandle = url.searchParams.get("instagramHandle") || "";
+
+let projectId;
 const init = () => {
   const tshirtImage = document.createElement("img");
   tshirtImage.src = "tshirt.png";
   txt2imgForm.appendChild(getGenerateForm());
+
+  if (url.searchParams.get("projectId")) {
+    projectId = url.searchParams.get("projectId");
+    loadProject(projectId);
+  } else projectId = crypto.randomUUID();
+
   // layerMap.set("tshirt", new ImageLayer("tshirt", tshirtImage));
   //height is 952
   // const px = 1061 / 2 - 450 / 2;
@@ -209,24 +194,11 @@ const getOperatedCopy = (layer, layerOperations) => {
 
 const getDeepCopy = (layer) => {
   if (layer instanceof ImageLayer) {
-    return new ImageLayer(
-      layer.image,
-      layer.posX,
-      layer.posY,
-      layer.scale,
-      layer.canvas,
-      layer.id
-    );
+    return new ImageLayer(layer);
   }
 };
 
-const refreshLayers = (updateSelected = false) => {
-  let selectedID;
-  if (!updateSelected) {
-    selectedID = getSelectedLayersAndBoards().map((layer) => {
-      if (layer !== null) return layer.id;
-    });
-  }
+const refreshLayers = () => {
   layers.replaceChildren();
   layerMap.forEach((layer) => {
     if (layer instanceof Board) {
@@ -239,32 +211,25 @@ const refreshLayers = (updateSelected = false) => {
       addLayerElement(layer);
     }
   });
-
-  if (updateSelected) {
-    deselectAllLayers();
-    layers.childNodes.forEach((child) => {
-      if (child.id == layerCount) {
-        if (child.classList.contains("board"))
-          child.classList.add("selected__board");
-        else child.classList.add("selected__layer");
-      }
-    });
-  } else {
-    layers.childNodes.forEach((child) => {
-      if (selectedID.includes(Number(child.id))) {
-        if (child.classList.contains("board"))
-          child.classList.add("selected__board");
-        else child.classList.add("selected__layer");
-      }
-    });
-  }
+  updateSelected(layers); 
 };
+
+const updateSelected = layers => {
+  layers.childNodes.forEach((child) => {
+    if (selectedLayer === child.id) {
+      if (child.classList.contains("board"))
+        child.classList.add("selected__board");
+      else child.classList.add("selected__layer");
+    } 
+  });
+}
 
 const addLayerElement = (layer, isChild = false) => {
   const layerDiv = document.createElement("div");
   const layerWrapper = document.createElement("div");
   layerWrapper.classList.add("layer__wrapper");
   let type = "";
+  let trainingButton;
   if (layer instanceof Board) {
     type = "board";
     const collapseButton = document.createElement("img");
@@ -279,6 +244,14 @@ const addLayerElement = (layer, isChild = false) => {
       refreshLayers();
     });
     layerWrapper.appendChild(collapseButton);
+
+    trainingButton = document.createElement("button");
+    trainingButton.innerHTML = "train";
+    trainingButton.classList.add("layer__component");
+    trainingButton.classList.add("training__button");
+    trainingButton.addEventListener("click", () => {
+      trainBoard(layer);
+    });
   } else type = "layer";
   layerDiv.classList.add(type);
   if (isChild) layerDiv.classList.add("child__layer");
@@ -320,11 +293,13 @@ const addLayerElement = (layer, isChild = false) => {
   layerWrapper.appendChild(layerTitle);
   layerWrapper.appendChild(transformImageButton);
   layerWrapper.appendChild(layerDeleteButton);
+
   layerDiv.appendChild(layerWrapper);
   if (layer.transform) {
     const transformForm = getTransformForm();
     transformForm.setAttribute("layerID", layer.id);
     layerDiv.appendChild(transformForm);
+    if (trainingButton) layerWrapper.appendChild(trainingButton);
   }
   layerDiv.title = layer.layerTitle;
   layerDiv.id = layer.id;
@@ -340,6 +315,27 @@ const addLayerElement = (layer, isChild = false) => {
     drawCanvas();
   });
   layers.appendChild(layerDiv);
+};
+
+const trainBoard = (board) => {
+  saveProject();
+  const trainingImages = [];
+  board.layerMap.forEach((layer) => {
+    if (layer instanceof ImageLayer) {
+      trainingImages.push(layer.imageId);
+    }
+  });
+
+  fetch("https://divinci.shop/api/order", {
+    method: "PUT",
+    body: JSON.stringify({
+      customerId: customerId,
+      subjectType: subjectType,
+      instagramHandle: instagramHandle,
+      pipelineStage: "training",
+      trainingImages: trainingImages,
+    }),
+  });
 };
 
 const getForm = () => {
@@ -422,9 +418,6 @@ const getGenerateForm = () => {
 };
 
 const generateImage = (event) => {
-  const objFromMap = Object.fromEntries(layerMap);
-  console.log(JSON.stringify(objFromMap));
-
   data = new FormData(event.target);
   const result = document.createElement("img");
   result.classList.add("txt2img__result");
@@ -489,7 +482,6 @@ const transformImage = (event) => {
     temp.width = 512;
     temp.height = 768;
     const tempContext = temp.getContext("2d");
-    console.log("loaded temp canvas");
     tempContext.drawImage(c, 0, 0, 512, 768);
     c = temp;
   }
@@ -646,9 +638,9 @@ const getBoard = (posX, posY, width, height) => {
 const isPointWithinLayer = (posX, posY, layer) => {
   if (
     posX > layer.posX &&
-    posX < layer.posX + layer.width &&
+    posX < layer.posX + layer.getScaledWidth() &&
     posY > layer.posY &&
-    posY < layer.posY + layer.height
+    posY < layer.posY + layer.getScaledHeight()
   )
     return true;
   else return false;
@@ -664,7 +656,9 @@ const addImage = (image, posX, posY) => {
 
   const board = getBoard(posX, posY, image.width, image.height);
   let map;
-  const imageLayer = new ImageLayer(image, posX, posY);
+  const layer = { image: image, posX: posX, posY: posY };
+
+  const imageLayer = new ImageLayer(layer);
   if (board === null) {
     map = layerMap;
   } else {
@@ -672,11 +666,10 @@ const addImage = (image, posX, posY) => {
     imageLayer.board = board;
   }
 
-  imageLayer.imageId = crypto.randomUUID();
-  saveImage(imageLayer);
   map.set(imageLayer.id, imageLayer);
+  selectedLayer = imageLayer.id;
   drawCanvas();
-  refreshLayers(true);
+  refreshLayers();
   outlineSelectedLayers();
 };
 
@@ -691,9 +684,9 @@ const deselectAllLayers = () => {
 
 const getLayerById = (id) => {
   for (let [title, layer] of layerMap) {
-    if (layer.id === Number(id)) return layer;
+    if (layer.id === id) return layer;
     else if (layer instanceof Board) {
-      let result = layer.layerMap.get(Number(id));
+      let result = layer.layerMap.get(id);
       if (result) return result;
     }
   }
@@ -827,13 +820,15 @@ const evaluateBoard = (layer) => {
 
 const drawBoardStartEventHandler = (event) => {
   drawing = true;
-  const board = new Board(
-    getOriginalX(event.offsetX),
-    getOriginalY(event.offsetY),
-    0,
-    0
-  );
+  const board = new Board({
+    posX: getOriginalX(event.offsetX),
+    posY: getOriginalY(event.offsetY),
+    width: 0,
+    height: 0,
+  });
+  selectedLayer = board.id;
   layerMap.set(board.id, board);
+
   refreshLayers(true);
 };
 
@@ -902,10 +897,13 @@ const saveDrawing = (c) => {
 };
 
 const saveImage = (imageLayer) => {
- imageLayer.canvas.toBlob((blob) => {
-    fetch("https://divinci.shop/api/image", {
-      headers:{
-        imageId:imageLayer.imageId
+  imageLayer.imageId = imageLayer.imageId ? imageLayer.imageId : crypto.randomUUID(); 
+  let api = "https://divinci.shop/api/image";
+
+  imageLayer.canvas.toBlob((blob) => {
+    fetch(api, {
+      headers: {
+        imageId: imageLayer.imageId,
       },
       method: "PUT",
       body: blob,
@@ -1283,30 +1281,34 @@ editorContainer.addEventListener("touchstart", (event) => {
   }
 });
 
-document.getElementById("input_file").addEventListener("change", (event) => {
-  var input = event.target;
-  console.log("before onload");
-
-  console.log("loaded");
+const readImage = async (file) => {
   var reader = new FileReader();
   const output = new Image();
   reader.onload = function () {
+    console.log('loaded')
     var dataURL = reader.result;
-    console.log("output");
-
     output.src = dataURL;
-
-    console.log("log");
+    
   };
-  reader.readAsDataURL(input.files[0]);
+  reader.readAsDataURL(file);
   output.addEventListener("load", () => {
     output.width = 512;
     output.height = 512;
     addImage(output, translateX, translateY);
   });
+}
+
+document.getElementById("input_file").addEventListener("change", (event) => {
+  var files = event.target.files;
+  for(let file = 0 ; file < files.length; file++){
+    readImage(files[file]);
+  }
 });
 
 const getLayerObject = (layer) => {
+  if (layer instanceof ImageLayer) {
+    saveImage(layer);
+  }
   const layerObject = {
     posX: layer.posX,
     posY: layer.posY,
@@ -1315,13 +1317,15 @@ const getLayerObject = (layer) => {
     width: layer.width,
     scale: layer.scale,
     id: layer.id,
+    type: layer.type,
+    imageId: layer.imageId,
   };
 
   if (layer instanceof Board) {
     layerObject.isCollapsed = layer.isCollapsed;
-    layerObject.layerMap = {};
+    layerObject.layerMap = [];
     layer.layerMap.forEach((l, id) => {
-      layerObject.layerMap[id] = getLayerObject(l);
+      layerObject.layerMap.push(getLayerObject(l));
     });
   }
   return layerObject;
@@ -1329,17 +1333,70 @@ const getLayerObject = (layer) => {
 
 const saveProject = () => {
   const canvas = {};
+  canvas.layerMap = [];
   layerMap.forEach((layer, id) => {
-    canvas[id] = getLayerObject(layer);
+    canvas.layerMap.push(getLayerObject(layer));
   });
 
   fetch("https://divinci.shop/api/project", {
     headers: {
-      method: "PUT",
       projectId: projectId,
     },
-    body: JSON.stringify(canvas),
+    method: "PUT",
+    body: JSON.stringify({ title: "board 1", canvas: canvas, instagramHandle: instagramHandle, subjectType: subjectType}),
   });
+};
+
+const loadProject = (projectId) => {
+  fetch(`https://divinci.shop/api/project?projectId=${projectId}`)
+    .then((response) => response.json())
+    .then((project) => {
+      const canvas = project.canvas;
+      instagramHandle = project.instagramHandle; 
+      subjectType = project.subjectType; 
+      for (let layer of canvas.layerMap) {
+        if (layer.type === "image") {
+          const imageLayer = loadImage(layer, layerMap);
+        } else if (layer.type === "board") {
+          const boardLayer = loadBoard(layer);
+          layerMap.set(layer.id, boardLayer);
+        }
+      }
+      refreshLayers();
+      drawCanvas();
+    });
+};
+
+const loadBoard = (boardLayer) => {
+  const board = new Board(boardLayer);
+  for (let layer of boardLayer.layerMap) {
+    if (layer.type === "image") {
+      loadImage(layer, board.layerMap);
+    } else if (layer.type === "board") {
+      const newBoard = loadBoard(layer);
+      board.layerMap.set(layer.id, newBoard);
+    }
+  }
+  return board;
+};
+
+const loadImage = (layer, layerMap) => {
+  fetch(`https://divinci.shop/api/image?imageId=${layer.imageId}`)
+    .then((response) => response.blob())
+    .then((blob) => URL.createObjectURL(blob))
+    .then((objectURL) => {
+      const img = new Image();
+      img.src = objectURL;
+      img.onload = () => {
+        img.imgWidth = img.naturalWidth;
+        img.imgHeight = img.naturalHeight;
+        layer.image = img;
+        const imageLayer = new ImageLayer(layer);
+        layerMap.set(layer.id, imageLayer);
+        refreshLayers();
+        drawCanvas();
+      };
+    });
 };
 
 canvasContainer.addEventListener("pointerdown", pointerDownHandler);
