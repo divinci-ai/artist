@@ -334,6 +334,7 @@ const trainBoard = (board) => {
       instagramHandle: instagramHandle,
       pipelineStage: "training",
       trainingImages: trainingImages,
+      projectId:projectId
     }),
   });
 };
