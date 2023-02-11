@@ -1,10 +1,10 @@
 const projectDirectory = document.getElementById('project_directory');
 
-fetch('https://divinci.shop/api/project').then(response => response.json()).then(res => 
-res.keys.forEach(key => {
+fetch('https://divinci.shop/api/order').then(response => response.json()).then(res => 
+res.documents.forEach(doc => {
     const project = document.createElement("a"); 
-    project.innerHTML = key.name; 
-    project.href=`./editor.html?projectId=${key.name}`
+    project.innerHTML = doc.instagramHandle; 
+    project.href=`./editor.html?projectId=${doc._id}`
     project.classList.add("project");
     projectDirectory.appendChild(project);  
 }));

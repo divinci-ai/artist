@@ -211,18 +211,18 @@ const refreshLayers = () => {
       addLayerElement(layer);
     }
   });
-  updateSelected(layers); 
+  updateSelected(layers);
 };
 
-const updateSelected = layers => {
+const updateSelected = (layers) => {
   layers.childNodes.forEach((child) => {
     if (selectedLayer === child.id) {
       if (child.classList.contains("board"))
         child.classList.add("selected__board");
       else child.classList.add("selected__layer");
-    } 
+    }
   });
-}
+};
 
 const addLayerElement = (layer, isChild = false) => {
   const layerDiv = document.createElement("div");
@@ -291,9 +291,17 @@ const addLayerElement = (layer, isChild = false) => {
   layerTitle.style = "display:inline;";
   layerWrapper.appendChild(layerImg);
   layerWrapper.appendChild(layerTitle);
+  if(layer instanceof ImageLayer){
+    const downloadButton = document.createElement("button");
+    downloadButton.innerText = "download"; 
+    downloadButton.classList.add("layer__component"); 
+    downloadButton.addEventListener("click", () => {
+      saveLayer(layer.id)});
+    layerWrapper.appendChild(downloadButton)
+  } 
   layerWrapper.appendChild(transformImageButton);
   layerWrapper.appendChild(layerDeleteButton);
-
+  
   layerDiv.appendChild(layerWrapper);
   if (layer.transform) {
     const transformForm = getTransformForm();
@@ -334,7 +342,7 @@ const trainBoard = (board) => {
       instagramHandle: instagramHandle,
       pipelineStage: "training",
       trainingImages: trainingImages,
-      projectId:projectId
+      projectId: projectId,
     }),
   });
 };
@@ -462,6 +470,43 @@ const generateImage = (event) => {
     });
 };
 
+const addTxt2ImgResult = async (id) => {
+  const result = document.createElement("img");
+  result.classList.add("txt2img__result");
+
+  result.addEventListener("dragstart", (event) => {
+    event.dataTransfer.setData("Text", event.target.src);
+  });
+
+  result.addEventListener("touchend", (event) => {
+    const rect = canvasContainer.getBoundingClientRect();
+    const touchX = event.changedTouches[0].clientX;
+    const touchY = event.changedTouches[0].clientY;
+    if (
+      touchX > rect.left &&
+      touchY > rect.top &&
+      touchX < rect.right &&
+      touchY < rect.bottom
+    ) {
+      addImage(
+        result,
+        getOriginalX(touchX - rect.left),
+        getOriginalY(touchY - rect.top)
+      );
+    }
+  });
+
+  fetch(`https://divinci.shop/api/image?imageId=${id}`)
+    .then((response) => response.blob())
+    .then((blob) => URL.createObjectURL(blob))
+    .then((objectURL) => {
+      result.src = objectURL;
+    })
+    .then((foo) => {
+      txt2imgResults.appendChild(result);
+    });
+};
+
 const transformImage = (event) => {
   const data = new FormData(event.target);
   const layer = getLayerById(event.target.getAttribute("layerID"));
@@ -481,9 +526,9 @@ const transformImage = (event) => {
   if (c.width > 512) {
     const temp = document.createElement("canvas");
     temp.width = 512;
-    temp.height = 768;
+    temp.height = 512;
     const tempContext = temp.getContext("2d");
-    tempContext.drawImage(c, 0, 0, 512, 768);
+    tempContext.drawImage(c, 0, 0, 512, 512);
     c = temp;
   }
 
@@ -879,11 +924,10 @@ const setTranslate = (dx, dy) => {
   drawCanvas();
 };
 
-const downloadCanvas = (c) => {
-  c.toDataURL("image/png").replace("image/png", "image/octet-stream");
+const downloadCanvas = (design) => {
   let anchor = document.createElement("a");
-  anchor.href = c.toDataURL("image/png");
-  anchor.download = "rageCage.PNG";
+  anchor.href = design.canvas.toDataURL("image/png");
+  anchor.download = `${design.layerTitle}.png`;
   anchor.click();
 };
 
@@ -898,7 +942,9 @@ const saveDrawing = (c) => {
 };
 
 const saveImage = (imageLayer) => {
-  imageLayer.imageId = imageLayer.imageId ? imageLayer.imageId : crypto.randomUUID(); 
+  imageLayer.imageId = imageLayer.imageId
+    ? imageLayer.imageId
+    : crypto.randomUUID();
   let api = "https://divinci.shop/api/image";
 
   imageLayer.canvas.toBlob((blob) => {
@@ -1109,20 +1155,20 @@ document.addEventListener("keyup", function (event) {
   }
 });
 
-//TODO: add artboard layer
-// save.addEventListener("click", () => {
-//   let design = layerMap.get("Layer 1");
-//   const tempCanvas = document.createElement("canvas");
-//   const tempContext = tempCanvas.getContext("2d");
-//   tempCanvas.width = design.width;
-//   tempCanvas.height = design.height;
-//   tempContext.putImageData(
-//     context.getImageData(design.posX, design.posY, design.width, design.height),
-//     0,
-//     0
-//   );
-//   saveDrawing(tempCanvas);
-// });
+const saveLayer = (layerID) => {
+  let design = layerMap.get(layerID);
+  // const tempCanvas = document.createElement("canvas");
+  // const tempContext = tempCanvas.getContext("2d");
+  // tempCanvas.width = design.width;
+  // tempCanvas.height = design.height;
+  // tempContext.putImageData(
+  //   context.getImageData(design.posX, design.posY, design.width, design.height),
+  //   0,
+  //   0
+  // );
+  // // saveDrawing(tempCanvas);
+  downloadCanvas(design);
+};
 
 productForm.addEventListener("submit", (event) => {
   //TODO: once submit is successful, clear form
@@ -1286,10 +1332,9 @@ const readImage = async (file) => {
   var reader = new FileReader();
   const output = new Image();
   reader.onload = function () {
-    console.log('loaded')
+    console.log("loaded");
     var dataURL = reader.result;
     output.src = dataURL;
-    
   };
   reader.readAsDataURL(file);
   output.addEventListener("load", () => {
@@ -1297,11 +1342,11 @@ const readImage = async (file) => {
     output.height = 512;
     addImage(output, translateX, translateY);
   });
-}
+};
 
 document.getElementById("input_file").addEventListener("change", (event) => {
   var files = event.target.files;
-  for(let file = 0 ; file < files.length; file++){
+  for (let file = 0; file < files.length; file++) {
     readImage(files[file]);
   }
 });
@@ -1344,27 +1389,47 @@ const saveProject = () => {
       projectId: projectId,
     },
     method: "PUT",
-    body: JSON.stringify({ title: "board 1", canvas: canvas, instagramHandle: instagramHandle, subjectType: subjectType}),
+    body: JSON.stringify({
+      title: "board 1",
+      canvas: canvas,
+      instagramHandle: instagramHandle,
+      subjectType: subjectType,
+    }),
   });
 };
 
 const loadProject = (projectId) => {
-  fetch(`https://divinci.shop/api/project?projectId=${projectId}`)
-    .then((response) => response.json())
-    .then((project) => {
-      const canvas = project.canvas;
-      instagramHandle = project.instagramHandle; 
-      subjectType = project.subjectType; 
-      for (let layer of canvas.layerMap) {
-        if (layer.type === "image") {
-          const imageLayer = loadImage(layer, layerMap);
-        } else if (layer.type === "board") {
-          const boardLayer = loadBoard(layer);
-          layerMap.set(layer.id, boardLayer);
-        }
+  // fetch(`https://divinci.shop/api/project?projectId=${projectId}`)
+  //   .then((response) => response.json())
+  //   .then((project) => {
+  //     const canvas = project.canvas;
+  //     instagramHandle = project.instagramHandle;
+  //     subjectType = project.subjectType;
+  //     for (let layer of canvas.layerMap) {
+  //       if (layer.type === "image") {
+  //         const imageLayer = loadImage(layer, layerMap);
+  //       } else if (layer.type === "board") {
+  //         const boardLayer = loadBoard(layer);
+  //         layerMap.set(layer.id, boardLayer);
+  //       }
+  //     }
+  //     loadGenerations();
+  //     refreshLayers();
+  //     drawCanvas();
+  //   });
+  loadGenerations();
+  refreshLayers();
+};
+
+const loadGenerations = () => {
+  fetch(`https://divinci.shop/api/image?order=${projectId}`)
+    .then((response) => {
+      return response.json();
+    })
+    .then((images) => {
+      for (let document of images.documents) {
+        addTxt2ImgResult(document.id);
       }
-      refreshLayers();
-      drawCanvas();
     });
 };
 
