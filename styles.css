@@ -56,7 +56,8 @@ body {
 }
 
 #sidebar_generate{
-  overflow:hidden; 
+  /* overflow:hidden; 
+  */
 }
 
 #prompt_result{
@@ -68,10 +69,10 @@ body {
 }
 
 /* Hide scrollbar for IE, Edge and Firefox */
-.active__sidebar__window{
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
-}
+/* .active__sidebar__window{
+  -ms-overflow-style: none;  /* IE and Edge 
+  scrollbar-width: none;  Firefox
+} */
 
 #submit_button {
   height: fit-content;
@@ -91,7 +92,7 @@ body {
 
 #canvas_container {
   flex-grow: 1;
-  overflow: hidden;
+  /* overflow: hidden; */
 }
 
 .toolbar__item {
