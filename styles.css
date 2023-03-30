@@ -20,7 +20,7 @@ img {
   background-color: none;
 }
 body {
-  overflow:hidden;
+  /* overflow:hidden; */
   background-color: grey;
   user-select: none;
   cursor: url(assets/cursor.png), pointer;
