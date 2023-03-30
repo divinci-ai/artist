@@ -56,8 +56,7 @@ body {
 }
 
 #sidebar_generate{
-  /* overflow:hidden; 
-  */
+  overflow:hidden; 
 }
 
 #prompt_result{
@@ -92,7 +91,7 @@ body {
 
 #canvas_container {
   flex-grow: 1;
-  /* overflow: hidden; */
+  overflow: hidden;
 }
 
 .toolbar__item {
