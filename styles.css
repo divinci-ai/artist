@@ -63,9 +63,9 @@ body {
   overflow: scroll ;
   height:100%;
 }
-.active__sidebar__window::-webkit-scrollbar {
+/* .active__sidebar__window::-webkit-scrollbar {
   display: none;
-}
+} */
 
 /* Hide scrollbar for IE, Edge and Firefox */
 /* .active__sidebar__window{
